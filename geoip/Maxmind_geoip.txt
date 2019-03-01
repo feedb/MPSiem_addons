@@ -1,0 +1,68 @@
+query Find_country($ip) from Maxmind_country {
+to > $ip
+}
+qhandler {
+   $country = name
+}
+
+query Find_aso($ip) from Maxmind_asn {
+to > $ip
+}
+qhandler {
+   $aso = aso
+}
+
+event Whois_srcip:
+filter {
+	((object == "connection" and action != "close") or
+	(object == "flow" and action == "detect")) and
+    not in_subnet(src.ip, "127.0.0.0/8") and
+    not in_subnet(src.ip, "172.16.0.0/12") and
+    not in_subnet(src.ip, "192.168.0.0/16") and
+    not in_subnet(src.ip, "10.0.0.0/8")  
+}
+
+event Whois_dstip:
+filter {
+    ((object == "connection" and action != "close") or
+	(object == "flow" and action == "detect")) and
+    not in_subnet(dst.ip, "127.0.0.0/8") and
+    not in_subnet(dst.ip, "172.16.0.0/12") and
+    not in_subnet(dst.ip, "192.168.0.0/16") and
+    not in_subnet(dst.ip, "10.0.0.0/8") and
+    not in_subnet(dst.ip, "224.0.0.0/4") # Multicast
+}
+
+enrichment Maxmind_geoip
+
+enrich Whois_srcip:
+enrich_fields {
+	$oct1 = number(strip(substr(src.ip, 0, 3), "", "."))
+    $tmp = strip(src.ip, string($oct1), "")
+    $oct2 = number(strip(substr($tmp, 1, 3), "", "."))
+    $tmp = strip($tmp, "."+string($oct2), "")
+    $oct3 = number(strip(substr($tmp, 1, 3), "", "."))
+    $tmp = strip($tmp, "."+string($oct3), "")
+    $oct4 = number(substr($tmp, 1, 3))
+    $ip = $oct1 * 16777216 + $oct2 * 65536 + $oct3 * 256 + $oct4 
+    $result1 = exec_query("Find_country",[$ip])
+    src.geo.country = $result1["$country"]
+    $result2 = exec_query("Find_aso", [$ip])
+    src.geo.org = $result2["$aso"]
+}
+
+enrich Whois_dstip:
+enrich_fields {
+	$oct1 = number(strip(substr(dst.ip, 0, 3), "", "."))
+    $tmp = strip(dst.ip, string($oct1), "")
+    $oct2 = number(strip(substr($tmp, 1, 3), "", "."))
+    $tmp = strip($tmp, "."+string($oct2), "")
+    $oct3 = number(strip(substr($tmp, 1, 3), "", "."))
+    $tmp = strip($tmp, "."+string($oct3), "")
+    $oct4 = number(substr($tmp, 1, 3))
+    $ip = $oct1 * 16777216 + $oct2 * 65536 + $oct3 * 256 + $oct4 
+	$result1 = exec_query("Find_country",[$ip])
+	dst.geo.country = $result1["$country"]
+	$result2 = exec_query("Find_aso", [$ip])
+	dst.geo.org = $result2["$aso"]
+}
