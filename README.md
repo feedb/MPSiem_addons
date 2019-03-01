@@ -2,5 +2,5 @@
 
 telegram канал, посвященный MP SIEM - @MPSIEMChat
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- geoip - реализация geoip от @vbengin
+ geoip - реализация geoip от @ilonsmask
  
