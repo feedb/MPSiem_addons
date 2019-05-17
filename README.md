@@ -7,3 +7,5 @@ telegram канал, посвященный MP SIEM - @MPSIEMChat
  remove_incidents - удаление инцидентов от pt enthusiasts
 
  mpxsiem_monitoring_community - набор конфиг-файлов для telegraf агентов и готовые дашборды для Grafana от @dips_o
+  
+ password dics - 2 словаря паролей для профиля брутфорса rdp (честно взял с инцидента)
