@@ -11,7 +11,7 @@ event Connection_to_smb_detected:
 
     }
 
-rule Many_smb_connections: Connection_to_smb_detected[20,] timer 5s
+rule Many_smb_connections: Connection_to_smb_detected[20,] within 5s
 
     on Connection_to_smb_detected {
         $src.ip = src.ip
@@ -19,7 +19,7 @@ rule Many_smb_connections: Connection_to_smb_detected[20,] timer 5s
         $src.host = src.host
         $src.asset = src.asset
 		
-	$dst.ip = dst.ip
+	    $dst.ip = dst.ip
         $dst.hostname = dst.hostname
         $dst.host = dst.host
         $dst.port= dst.port
