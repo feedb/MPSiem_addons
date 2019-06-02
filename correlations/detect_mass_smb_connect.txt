@@ -7,7 +7,7 @@ event Connection_to_smb_detected:
         in_list(["allow", "deny", "reject", "detect", "open", "start", "access"], action) and 
         in_list(["connection", "translation", "flow", "resource", "session"], object) and
         lower(protocol) == "tcp" and
-        src.host != null and
+        src.host != null
 
     }
 
