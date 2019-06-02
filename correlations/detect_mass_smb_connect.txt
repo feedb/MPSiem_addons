@@ -1,0 +1,47 @@
+event Connection_to_smb_detected:
+    key:
+        src.host
+    filter {
+        correlation_name == null and
+        dst.port == 445 and
+        in_list(["allow", "deny", "reject", "detect", "open", "start", "access"], action) and 
+        in_list(["connection", "translation", "flow", "resource", "session"], object) and
+        lower(protocol) == "tcp" and
+        src.host != null and
+
+    }
+
+rule Many_smb_connections: Connection_to_smb_detected[20,] timer 5s
+
+    on Connection_to_smb_detected {
+        $src.ip = src.ip
+        $src.hostname = src.hostname
+        $src.host = src.host
+        $src.asset = src.asset
+		
+	$dst.ip = dst.ip
+        $dst.hostname = dst.hostname
+        $dst.host = dst.host
+        $dst.port= dst.port
+        $dst.asset = dst.asset
+
+        $protocol = protocol
+        $count.subevents = $count.subevents + 1
+    }
+
+emit {
+    $correlation_name = "Many_smb_connections"
+    $correlation_type = "incident"
+
+    $importance = "medium"
+
+    $category.generic = "Malware"
+    $category.high = "Miscellaneous"
+    $category.low = "Detection"
+
+    $object = "attack"
+    $action = "initiate"
+    $status = "success"
+
+    $id = "Community_SIEM_many_smb_connections"
+}
