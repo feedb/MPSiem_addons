@@ -26,6 +26,8 @@ rule Many_smb_connections: Connection_to_smb_detected[20,] within 5s
         $dst.asset = dst.asset
 
         $protocol = protocol
+        $scope_id = scope_id
+        $tenant_id = tenant_id
         $count.subevents = $count.subevents + 1
     }
 
