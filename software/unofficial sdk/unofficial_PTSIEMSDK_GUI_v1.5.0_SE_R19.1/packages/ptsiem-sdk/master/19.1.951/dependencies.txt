@@ -1,0 +1,10 @@
+aggregator 14.1.639 master
+commander 19.0.2281 master
+correlationengine 14.2.901 master
+corules 10.0.636 master
+enricher 19.0.245 master
+frontend 19.0.1559 master
+normalizer 19.0.1678 master
+storage 19.0.489 master
+ucrt * *
+xputils 8.0.426 master

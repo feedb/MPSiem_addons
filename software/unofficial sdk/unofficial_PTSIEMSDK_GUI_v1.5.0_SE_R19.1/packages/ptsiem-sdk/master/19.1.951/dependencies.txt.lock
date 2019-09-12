@@ -1,0 +1,11 @@
+#package                  version       branch arch   compiler
+aggregator                14.1.639      master x86_64 vc140
+commander                 19.0.2281     master x86_64 vc140
+correlationengine         14.2.901      master x86_64 vc140
+corules                   10.0.636      master x86_64 vc140
+enricher                  19.0.245      master x86_64 vc140
+frontend                  19.0.1559     master x86_64 vc140
+normalizer                19.0.1678     master x86_64 vc140
+storage                   19.0.489      master x86_64 vc140
+ucrt                      10.0.10586.15 *      x86_64 vc140
+xputils                   8.0.426       master x86_64 vc140
