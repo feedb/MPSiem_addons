@@ -1,0 +1,58 @@
+<Sysmon schemaversion="4.22">
+<HashAlgorithms>MD5</HashAlgorithms>
+<EventFiltering>
+<FileCreate onmatch="include">
+<!--  Для правила Detect_Office_XLL_modification  -->
+<TargetFilename condition="end with">.wll</TargetFilename>
+<TargetFilename condition="end with">.xll</TargetFilename>
+<!--  Для правила Detect_Windows_Autorun_modify  -->
+<TargetFilename condition="contains">\start menu\programs\startup\</TargetFilename>
+<!--
+ Для правила Detect_Possible_Windows_Web_shell_created 
+-->
+<!--  IIS  -->
+<TargetFilename condition="contains">inetpub\wwwroot</TargetFilename>
+<TargetFilename condition="end with">.aspx</TargetFilename>
+<TargetFilename condition="end with">.asp</TargetFilename>
+<!--  apache, nginx  -->
+<TargetFilename condition="end with">.php</TargetFilename>
+<TargetFilename condition="contains">\www\</TargetFilename>
+<TargetFilename condition="contains">\htdocs\</TargetFilename>
+<TargetFilename condition="contains">\html\</TargetFilename>
+<!--  apache tomcat  -->
+<TargetFilename condition="end with">.jsp</TargetFilename>
+<TargetFilename condition="end with">.jspx</TargetFilename>
+<TargetFilename condition="contains">\jsp\</TargetFilename>
+<!--  Для правила Detect_Office_Normal_dotm_modification  -->
+<TargetFilename condition="contains">Normal.dotm</TargetFilename>
+<TargetFilename condition="contains">\appdata\roaming\microsoft\templates\</TargetFilename>
+</FileCreate>
+<RegistryEvent onmatch="include">
+<!--
+ Для правила Detect_GlobalFlags_in_Image_File_Execution_Options 
+-->
+<TargetObject condition="contains">\Currentversion\Image File Execution Options\</TargetObject>
+<TargetObject condition="contains">currentversion\silentprocessexit</TargetObject>
+<!--  Для правила Detect_Office_XLL_modification  -->
+<TargetObject condition="contains">\excel\options</TargetObject>
+<!--  Для правила Detect_Windows_Autorun_modify  -->
+<TargetObject condition="contains">\CurrentVersion\Run</TargetObject>
+<TargetObject condition="contains">\Windows\Run</TargetObject>
+<!--
+ Для правила Detect_Windows_Screensaver_modification 
+-->
+<TargetObject condition="contains">\Currentversion\Image File Execution Options\</TargetObject>
+<TargetObject condition="contains">\control panel\desktop</TargetObject>
+<!--  Для правила Detect_Registry_Winlogon_Helper  -->
+<TargetObject condition="contains">\currentversion\winlogon</TargetObject>
+<!--
+ Для правила Detect_Windows_Accessibility_StickyKey_modification 
+-->
+<TargetObject condition="contains">\Currentversion\Image File Execution Options\</TargetObject>
+<!--  Для правила Detect_possible_COM_object_persistence  -->
+<TargetObject condition="contains"> classes\clsid\*\inprocserver32</TargetObject>
+</RegistryEvent>
+<!--  Для правила Detect_WMI_Subscriptions_modification  -->
+<WmiEvent onmatch="exclude"> </WmiEvent>
+</EventFiltering>
+</Sysmon>
