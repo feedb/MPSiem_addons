@@ -11,3 +11,6 @@ telegram канал, посвященный MP SIEM - @MPSIEMChat
  password dics - 2 словаря паролей для профиля брутфорса rdp (честно взял с инцидента)
 
  software - софт для работы с MP SIEM
+
+ ExpertPacks - контент из пакетов экспертизы MaxPatrol SIEM
+
