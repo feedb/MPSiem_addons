@@ -14,4 +14,4 @@ telegram канал, посвященный MP SIEM - @MPSIEMChat
 
  ExpertPacks - контент из пакетов экспертизы MaxPatrol SIEM
 
- mpxsiem_monitoring_community -  набор конфиг-файлов для telegraf агентов и готовые дашборды для Grafana.
+ 
