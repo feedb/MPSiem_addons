@@ -13,5 +13,6 @@ telegram канал, посвященный MP SIEM - @MPSIEMChat
  software - софт для работы с MP SIEM
 
  ExpertPacks - контент из пакетов экспертизы MaxPatrol SIEM
-
+ 
+ normalizations - нормализации от членов сообщества
  
