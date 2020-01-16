@@ -1,0 +1,11 @@
+{
+  "auth_type": 0,
+  "debug": 0,
+  "export_core_pass": "gAAAAABcXZkk6naqPoqvTIrqj7VopY1ilYApItOLOLOLOOLORfANkiTkRFzag55yZtmGqFATzDpb_DEdetGA==",
+  "export_core_url": "https://192.168.123.123",
+  "export_core_user": "Administrator",
+  "hive_api_key": "mIzqjrZIM3bO2h11RIdLQEPfDqBs0Lji",
+  "hive_url": "http://192.168.123.124:9000",
+  "logfile": "/home/script/last_processed_incident.log",
+  "time_from": 480
+}

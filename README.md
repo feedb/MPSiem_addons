@@ -18,3 +18,5 @@ telegram канал, посвященный MP SIEM - @MPSIEMChat
  
  normalizations - нормализации от членов сообщества
  
+
+ the hive - Скрипт выгрузки инцидентов MP SIEM и связанных с инцидентом событий в The Hive
