@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 30,
-  "iteration": 1556597623622,
+  "id": 33,
+  "iteration": 1594294290059,
   "links": [
     {
       "icon": "external link",
@@ -310,9 +310,9 @@
             },
             {
               "condition": "AND",
-              "key": "display_name",
+              "key": "service_name",
               "operator": "=~",
-              "value": "/(MaxPatrol SIEM.*)/"
+              "value": "/SIEMServer.*/"
             }
           ],
           "triggers": {
@@ -479,9 +479,9 @@
             },
             {
               "condition": "AND",
-              "key": "display_name",
+              "key": "service_name",
               "operator": "=~",
-              "value": "/(MaxPatrol Redis.*|MaxPatrol Mongo.*|Postgre.*|SQL Server \\(.*|Elastic.*)|Rabbit.*/"
+              "value": "/Mongo.*|Postgre.*|^MSSQL.*|elastic.*|Rabbit.*/"
             }
           ],
           "triggers": {
@@ -545,19 +545,19 @@
       {
         "allValue": null,
         "current": {
-          "selected": true,
-          "text": "mp-fb-core",
-          "value": "mp-fb-core"
+          "isNone": true,
+          "text": "None",
+          "value": ""
         },
         "datasource": "Telegraf",
-        "definition": "SHOW TAG VALUES WITH KEY = \"host\" WHERE system = 'windows'",
+        "definition": "SHOW TAG VALUES WITH KEY = \"host\" WHERE system = 'windows' ",
         "hide": 0,
         "includeAll": false,
         "label": "Hostname",
         "multi": false,
         "name": "host",
         "options": [],
-        "query": "SHOW TAG VALUES WITH KEY = \"host\" WHERE system = 'windows'",
+        "query": "SHOW TAG VALUES WITH KEY = \"host\" WHERE system = 'windows' ",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -602,5 +602,5 @@
   "timezone": "",
   "title": "Telegraf_MPXSIEM_Win_Service_status",
   "uid": "tjZeXiqmz",
-  "version": 6
+  "version": 3
 }
