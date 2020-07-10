@@ -16,8 +16,8 @@
   "editable": true,
   "gnetId": 1902,
   "graphTooltip": 1,
-  "id": 26,
-  "iteration": 1556597483734,
+  "id": 32,
+  "iteration": 1594294397772,
   "links": [
     {
       "asDropdown": false,
@@ -4328,8 +4328,9 @@
       {
         "allValue": null,
         "current": {
-          "text": "mp-fb-core",
-          "value": "mp-fb-core"
+          "isNone": true,
+          "text": "None",
+          "value": ""
         },
         "datasource": "Telegraf",
         "definition": "SHOW TAG VALUES WITH KEY = \"host\" WHERE system = 'windows'",
@@ -4391,7 +4392,7 @@
         "options": [],
         "query": "SHOW TAG VALUES FROM \"win_proc\" WITH KEY = \"instance\"",
         "refresh": 1,
-        "regex": "/^(PT.*)/",
+        "regex": "/^Agent$|Analytics.*|Assets.*|ApplicationRegistration.*|Deployment.*|Events.*|Groups.*|HealthMonitoring.*|IAM.*|Incidents.*|Knowledge.*|Licensing.*|Notifications.*|Projections.*|Scanning.*|Scopes.*|Tables.*|Telemetry.*|Tenants.*|Topology.*|Triggers.*|^User.*/",
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
@@ -4441,7 +4442,7 @@
         "options": [],
         "query": "SHOW TAG VALUES FROM \"win_proc\" WITH KEY = \"instance\"",
         "refresh": 1,
-        "regex": "/^router|resolver|receiver|normalizer|correlator|commander|aggregator|storage|enricher|frontend/",
+        "regex": "/^router|resolver|receiver|normalizer|correlator|commander|aggregator|storage|enricher|frontend|healtmon.*|HealthMonitoring.Watchdog/",
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
@@ -4466,7 +4467,7 @@
         "options": [],
         "query": "SHOW TAG VALUES FROM \"win_proc\" WITH KEY = \"instance\"",
         "refresh": 1,
-        "regex": "/^(sqlservr|erl.*|postgres|elasticsearch.*|mongod|redis.*)/",
+        "regex": "/^(sqlservr|erl.*|postgres|elasticsearch.*|mongod)/",
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
@@ -4509,5 +4510,5 @@
   "timezone": "browser",
   "title": "Telegraf_MPXSIEM_Win",
   "uid": "x940iFimk",
-  "version": 6
+  "version": 3
 }
