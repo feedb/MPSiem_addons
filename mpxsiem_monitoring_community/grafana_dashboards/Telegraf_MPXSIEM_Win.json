@@ -16,8 +16,8 @@
   "editable": true,
   "gnetId": 1902,
   "graphTooltip": 1,
-  "id": 32,
-  "iteration": 1594294397772,
+  "id": 38,
+  "iteration": 1604918279426,
   "links": [
     {
       "asDropdown": false,
@@ -33,6 +33,7 @@
   "panels": [
     {
       "collapsed": false,
+      "datasource": null,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -56,6 +57,12 @@
       ],
       "datasource": "Telegraf",
       "decimals": 1,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "format": "s",
       "gauge": {
         "maxValue": 100,
@@ -172,6 +179,12 @@
       ],
       "datasource": "Telegraf",
       "decimals": null,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "format": "short",
       "gauge": {
         "maxValue": 100,
@@ -285,6 +298,12 @@
         "rgba(245, 54, 54, 0.9)"
       ],
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "format": "percent",
       "gauge": {
         "maxValue": 100,
@@ -406,6 +425,12 @@
       ],
       "datasource": "Telegraf",
       "decimals": 1,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "format": "decbytes",
       "gauge": {
         "maxValue": 24000000000,
@@ -526,6 +551,12 @@
         "rgba(50, 172, 45, 0.97)"
       ],
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "format": "percent",
       "gauge": {
         "maxValue": 100,
@@ -645,6 +676,7 @@
     },
     {
       "collapsed": false,
+      "datasource": null,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -663,13 +695,21 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 5,
+      "fillGradient": 0,
       "gridPos": {
         "h": 7,
         "w": 12,
         "x": 0,
         "y": 6
       },
+      "hiddenSeries": false,
       "id": 25,
       "legend": {
         "alignAsTable": true,
@@ -687,7 +727,11 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -783,13 +827,21 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 5,
+      "fillGradient": 0,
       "gridPos": {
         "h": 7,
         "w": 12,
         "x": 12,
         "y": 6
       },
+      "hiddenSeries": false,
       "id": 26,
       "legend": {
         "alignAsTable": true,
@@ -805,7 +857,11 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -897,6 +953,7 @@
     },
     {
       "collapsed": false,
+      "datasource": null,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -915,7 +972,14 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
+      "fillGradient": 0,
       "gridPos": {
         "h": 9,
         "w": 8,
@@ -923,6 +987,7 @@
         "y": 14
       },
       "height": "350",
+      "hiddenSeries": false,
       "id": 7,
       "legend": {
         "alignAsTable": true,
@@ -942,7 +1007,11 @@
       "links": [],
       "maxPerRow": 3,
       "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1087,7 +1156,14 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
+      "fillGradient": 0,
       "gridPos": {
         "h": 9,
         "w": 8,
@@ -1095,6 +1171,7 @@
         "y": 14
       },
       "height": "350",
+      "hiddenSeries": false,
       "id": 43,
       "interval": "",
       "legend": {
@@ -1111,7 +1188,11 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1207,7 +1288,14 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
+      "fillGradient": 0,
       "gridPos": {
         "h": 9,
         "w": 8,
@@ -1215,6 +1303,7 @@
         "y": 14
       },
       "height": "350",
+      "hiddenSeries": false,
       "id": 48,
       "interval": "",
       "legend": {
@@ -1231,7 +1320,11 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1366,13 +1459,21 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
+      "fillGradient": 0,
       "gridPos": {
         "h": 6,
         "w": 8,
         "x": 0,
         "y": 23
       },
+      "hiddenSeries": false,
       "id": 14,
       "legend": {
         "alignAsTable": true,
@@ -1389,7 +1490,11 @@
       "links": [],
       "maxPerRow": 3,
       "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1498,13 +1603,21 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 5,
+      "fillGradient": 0,
       "gridPos": {
         "h": 6,
         "w": 8,
         "x": 8,
         "y": 23
       },
+      "hiddenSeries": false,
       "id": 45,
       "interval": "10s",
       "legend": {
@@ -1523,7 +1636,11 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "connected",
+      "options": {
+        "alertThreshold": true
+      },
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1619,13 +1736,21 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 5,
+      "fillGradient": 0,
       "gridPos": {
         "h": 6,
         "w": 8,
         "x": 16,
         "y": 23
       },
+      "hiddenSeries": false,
       "id": 70,
       "interval": "10s",
       "legend": {
@@ -1644,7 +1769,11 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "connected",
+      "options": {
+        "alertThreshold": true
+      },
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1784,6 +1913,12 @@
       "dashes": false,
       "datasource": "Telegraf",
       "decimals": 1,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 6,
@@ -1810,6 +1945,7 @@
       "links": [],
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1918,6 +2054,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 5,
       "gridPos": {
         "h": 6,
@@ -1944,6 +2086,7 @@
       "links": [],
       "nullPointMode": "connected",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2039,6 +2182,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 5,
       "gridPos": {
         "h": 6,
@@ -2063,6 +2212,7 @@
       "links": [],
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2154,6 +2304,7 @@
     },
     {
       "collapsed": false,
+      "datasource": null,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -2172,6 +2323,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -2202,6 +2359,7 @@
       "maxPerRow": 2,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2297,6 +2455,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -2328,6 +2492,7 @@
       "maxPerRow": 3,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2423,6 +2588,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -2452,6 +2623,7 @@
       "maxPerRow": 3,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2586,6 +2758,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -2617,6 +2795,7 @@
       "maxPerRow": 3,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2751,6 +2930,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -2782,6 +2967,7 @@
       "maxPerRow": 2,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -2873,6 +3059,7 @@
     },
     {
       "collapsed": false,
+      "datasource": null,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -2891,6 +3078,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -2921,6 +3114,7 @@
       "maxPerRow": 2,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -3016,6 +3210,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -3047,6 +3247,7 @@
       "maxPerRow": 3,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -3142,6 +3343,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -3171,6 +3378,7 @@
       "maxPerRow": 3,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -3305,6 +3513,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -3334,6 +3548,7 @@
       "maxPerRow": 2,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -3429,6 +3644,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -3458,6 +3679,7 @@
       "maxPerRow": 3,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -3588,6 +3810,7 @@
     },
     {
       "collapsed": false,
+      "datasource": null,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -3606,6 +3829,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -3636,6 +3865,7 @@
       "maxPerRow": 2,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -3731,6 +3961,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -3762,6 +3998,7 @@
       "maxPerRow": 3,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -3870,6 +4107,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -3901,6 +4144,7 @@
       "maxPerRow": 3,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -4035,6 +4279,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -4064,6 +4314,7 @@
       "maxPerRow": 3,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -4198,6 +4449,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Telegraf",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -4227,6 +4484,7 @@
       "maxPerRow": 2,
       "nullPointMode": "null",
       "percentage": false,
+      "pluginVersion": "7.3.1",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -4318,7 +4576,7 @@
     }
   ],
   "refresh": "10s",
-  "schemaVersion": 18,
+  "schemaVersion": 26,
   "style": "dark",
   "tags": [
     "telegraf"
@@ -4329,11 +4587,13 @@
         "allValue": null,
         "current": {
           "isNone": true,
+          "selected": false,
           "text": "None",
           "value": ""
         },
         "datasource": "Telegraf",
         "definition": "SHOW TAG VALUES WITH KEY = \"host\" WHERE system = 'windows'",
+        "error": null,
         "hide": 0,
         "includeAll": false,
         "label": "Hostname",
@@ -4354,11 +4614,17 @@
       {
         "allValue": null,
         "current": {
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": "Telegraf",
         "definition": "",
+        "error": null,
         "hide": 0,
         "includeAll": true,
         "label": "Disk",
@@ -4379,11 +4645,17 @@
       {
         "allValue": null,
         "current": {
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": "Telegraf",
         "definition": "",
+        "error": null,
         "hide": 2,
         "includeAll": true,
         "label": "mpx_process",
@@ -4392,7 +4664,7 @@
         "options": [],
         "query": "SHOW TAG VALUES FROM \"win_proc\" WITH KEY = \"instance\"",
         "refresh": 1,
-        "regex": "/^Agent$|Analytics.*|Assets.*|ApplicationRegistration.*|Deployment.*|Events.*|Groups.*|HealthMonitoring.*|IAM.*|Incidents.*|Knowledge.*|Licensing.*|Notifications.*|Projections.*|Scanning.*|Scopes.*|Tables.*|Telemetry.*|Tenants.*|Topology.*|Triggers.*|^User.*/",
+        "regex": "/^Agent$|Analytics.*|Assets.*|ApplicationRegistration.*|Deployment.*|Events.*|Groups.*|HealthMonitoring.*|IAM.*|Incidents.*|Knowledge.*|Licensing.*|Notifications.*|Projections.*|Scanning.*|Scopes.*|Tables.*|Telemetry.*|Tenants.*|Topology.*|Triggers.*|^User.*|Policies.*/",
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
@@ -4404,11 +4676,17 @@
       {
         "allValue": null,
         "current": {
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": "Telegraf",
         "definition": "",
+        "error": null,
         "hide": 0,
         "includeAll": true,
         "label": "Network Interface",
@@ -4429,11 +4707,17 @@
       {
         "allValue": null,
         "current": {
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": "Telegraf",
         "definition": "",
+        "error": null,
         "hide": 2,
         "includeAll": true,
         "label": "siem_process",
@@ -4442,7 +4726,7 @@
         "options": [],
         "query": "SHOW TAG VALUES FROM \"win_proc\" WITH KEY = \"instance\"",
         "refresh": 1,
-        "regex": "/^router|resolver|receiver|normalizer|correlator|commander|aggregator|storage|enricher|frontend|healtmon.*|HealthMonitoring.Watchdog/",
+        "regex": "/^router|resolver|receiver|normalizer|correlator|commander|aggregator|storage|enricher|frontend|healtmon.*|HealthMonitoring.Watchdog|^node/",
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
@@ -4454,11 +4738,17 @@
       {
         "allValue": null,
         "current": {
-          "text": "All",
-          "value": "$__all"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": "Telegraf",
         "definition": "",
+        "error": null,
         "hide": 2,
         "includeAll": true,
         "label": "other_process",
@@ -4510,5 +4800,5 @@
   "timezone": "browser",
   "title": "Telegraf_MPXSIEM_Win",
   "uid": "x940iFimk",
-  "version": 3
+  "version": 2
 }
