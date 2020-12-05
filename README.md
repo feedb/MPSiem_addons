@@ -20,3 +20,5 @@ telegram канал, посвященный MP SIEM - @MPSIEMChat
  
 
  the hive - Скрипт выгрузки инцидентов MP SIEM и связанных с инцидентом событий в The Hive
+ 
+ mpsiemlib - неофициальный SDK для работы с API MP SIEM + unit-тесты
