@@ -21,7 +21,7 @@ class EventsTestCase(unittest.TestCase):
         self.__mpsiemworker = MPSIEMWorker(self.__creds_ldap, self.__settings)
         self.__module = self.__mpsiemworker.get_module(ModuleNames.INCIDENTS)
         self.__end = round(datetime.now(tz=pytz.timezone(settings.local_timezone)).timestamp())
-        self.__begin = self.__end - 86400
+        self.__begin = self.__end - 86400*5
 
     def tearDown(self) -> None:
         self.__module.close()

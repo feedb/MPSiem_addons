@@ -48,7 +48,11 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :param do_remove:
         :return: deploy ID
         """
-
+        self.log.info('status=prepare, action=install_objects, msg="Try to {} objects {}", '
+                      'hostname="{}", db="{}"'.format("install" if not do_remove else "uninstall",
+                                                      guids_list,
+                                                      self.__kb_hostname,
+                                                      db_name))
         headers = {'Content-Database': db_name,
                    'Content-Locale': 'RUS'}
         params = {"mode": "selection" if not do_remove else "uninstall",
@@ -442,7 +446,7 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                     }
         :return: {"param1": "value1", "param2": "value2"}
         """
-        self.log.debug('status=prepare, action=get_all_objects, msg="Try to get objects list", '
+        self.log.info('status=prepare, action=get_all_objects, msg="Try to get objects list", '
                        'hostname="{}", db="{}", filters="{}"'.format(self.__kb_hostname, db_name, filters))
 
         url = "https://{}:{}{}".format(self.__kb_hostname, self.__kb_port, self.__api_list_objects)
@@ -547,6 +551,9 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         """
         if content_type == MPContentTypes.TABLE:
             raise Exception('Method get_rule not supported {}'.format(MPContentTypes.TABLE))
+
+        self.log.info('status=success, action=get_rule, msg="Try to get rule {}", '
+                      'hostname="{}", db="{}"'.format(rule_id, self.__kb_hostname, db_name))
 
         headers = {'Content-Database': db_name,
                    'Content-Locale': 'RUS'}

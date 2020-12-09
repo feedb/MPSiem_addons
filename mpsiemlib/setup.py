@@ -1,13 +1,14 @@
 from setuptools import setup, find_packages
+from mpsiemlib import __url__, __version__, __author__, __license__, __title__, __description__
 
 setup(
-    name='mpsiemlib',
-    version='0.1.0',
+    name=__title__,
+    version=__version__,
     packages=find_packages(exclude=['tests']),
-    url='github.com',
-    license='GPLv3',
-    author='nikolaiav',
+    url=__url__,
+    license=__license__,
+    author=__author__,
     author_email='',
-    description='Maxpatrol SIEM API SDK',
+    description=__description__,
     zip_safe=False
 )

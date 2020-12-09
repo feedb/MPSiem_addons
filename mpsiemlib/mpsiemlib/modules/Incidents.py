@@ -11,10 +11,18 @@ class Incidents(ModuleInterface, LoggingHandler):
     """
     Incidents worker
     """
+    __time_format = "%Y-%m-%dT%H:%M:%S.%fZ"
 
     __api_incidents_list = "/api/v2/incidents"
-    __api_incident_info = "/api/incidents/{}"
-    __api_incident_comments = "/api/incidents/{}/transitions"
+
+    __api_incident_info = ""
+    __api_incident_info_new = "/api/incidentsReadModel/incidents/{}"  # From R23
+    __api_incident_info_old = "/api/incidents/{}"
+
+    __api_incident_comments = ""
+    __api_incident_comments_new = "/api/incidentsReadModel/incidents/{}/transitions"  # From R23
+    __api_incident_comments_old = "/api/incidents/{}/transitions"
+
     __api_incident_events = "/api/incidents/{}/events?limit={}"
     __api_incident_events_count = "/api/incidents/{}/events/count"
     __api_incident_issue = "/api/incidents/{}/issues"
@@ -33,7 +41,16 @@ class Incidents(ModuleInterface, LoggingHandler):
         LoggingHandler.__init__(self)
         self.__core_session = auth.connect(MPComponents.CORE)
         self.__core_hostname = auth.creds.core_hostname
+        self.__core_version = auth.get_core_version()
         self.__incidents_mapping = {}
+
+        if "23." in self.__core_version:
+            self.__api_incident_comments = self.__api_incident_comments_new
+            self.__api_incident_info = self.__api_incident_info_new
+        else:
+            self.__api_incident_comments = self.__api_incident_comments_old
+            self.__api_incident_info = self.__api_incident_info_old
+
         self.log.debug('status=success, action=prepare, msg="Incidents Module init"')
 
     def get_incidents_list(self,
@@ -62,9 +79,19 @@ class Incidents(ModuleInterface, LoggingHandler):
                                                                               end))
 
         url = "https://{}{}".format(self.__core_hostname, self.__api_incidents_list)
+
+        time_from = None
+        time_to = None
+        if "23." in self.__core_version:
+            time_from = datetime.fromtimestamp(begin, tz=pytz.timezone("UTC")).strftime(self.__time_format)
+            time_to = datetime.fromtimestamp(end, tz=pytz.timezone("UTC")).strftime(self.__time_format)
+        else:
+            time_from = begin
+            time_to = end
+
         params = {
-            "timeFrom": begin,
-            "timeTo": end,
+            "timeFrom": time_from,
+            "timeTo": time_to,
             "groups": {
                 "filterType": "no_filter"
             },

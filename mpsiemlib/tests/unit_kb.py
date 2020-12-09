@@ -92,7 +92,7 @@ class KBTestCase(unittest.TestCase):
         object_name = norm.get("name")
         object_id = norm.get("id")
 
-        calc_ids = self.__module.get_table_id_by_name(db_name, MPContentTypes.NORMALIZATION, object_name)
+        calc_ids = self.__module.get_id_by_name(db_name, MPContentTypes.NORMALIZATION, object_name)
 
         found = False
         for i in calc_ids:
@@ -156,7 +156,7 @@ class KBTestCase(unittest.TestCase):
         deploy_id = self.__module.install_objects(db_name, [norm_rule.get('id')])
 
         success_install = False
-        for i in range(6):
+        for i in range(30):
             time.sleep(10)
             deploy_status = self.__module.get_deploy_status(db_name, deploy_id)
             if deploy_status.get("deployment_status") == "succeeded":
@@ -166,7 +166,7 @@ class KBTestCase(unittest.TestCase):
         deploy_id = self.__module.uninstall_object(db_name, [norm_rule.get('id')])
 
         success_uninstall = False
-        for i in range(6):
+        for i in range(30):
             time.sleep(10)
             deploy_status = self.__module.get_deploy_status(db_name, deploy_id)
             if deploy_status.get("deployment_status") == "succeeded":
