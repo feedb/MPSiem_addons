@@ -35,7 +35,7 @@ class HealthMonitor(ModuleInterface, LoggingHandler):
         response = r.json()
         status = response.get("status")
 
-        self.log.info('status=success, action=get_global_status, msg="Got global status", '
+        self.log.info('status=success, action=get_health_status, msg="Got global status", '
                       'hostname="{}" status="{}"'.format(self.__core_hostname, status))
 
         return status
@@ -57,10 +57,26 @@ class HealthMonitor(ModuleInterface, LoggingHandler):
         response = r.json()
         errors = response.get("items")
 
-        self.log.info('status=success, action=get_errors, msg="Got errors", '
+        ret = []
+        for i in errors:
+            source = i.get("source") if i.get("source") is not None else {}
+            params = i.get("parameters") if i.get("parameters") is not None else {}
+            ret.append({"id": i.get("id"),
+                        "timestamp": i.get("timestamp"),
+                        "status": i.get("status", "").lower(),
+                        "type": i.get("type", "").lower(),
+                        "name": source.get("displayName").lower(),
+                        "hostname": source.get("hostName"),
+                        "ip": source.get("ipAddresses"),
+                        "component_name": params.get("componentName"),
+                        "component_hostname": params.get("hostName"),
+                        "component_ip": params.get("ipAddresses")
+                        })
+
+        self.log.info('status=success, action=get_health_errors, msg="Got errors", '
                       'hostname="{}" count="{}"'.format(self.__core_hostname, len(errors)))
 
-        return errors
+        return ret
 
     def get_health_license_status(self) -> dict:
         """
@@ -82,7 +98,7 @@ class HealthMonitor(ModuleInterface, LoggingHandler):
                   "expiration": lic.get("expirationDate"),
                   "assets": lic.get("assetsCount")}
 
-        self.log.info('status=success, action=get_license_status, msg="Got license status", '
+        self.log.info('status=success, action=get_health_license_status, msg="Got license status", '
                       'hostname="{}"'.format(self.__core_hostname))
 
         return status
@@ -115,7 +131,7 @@ class HealthMonitor(ModuleInterface, LoggingHandler):
                 "modules": i.get("modules")
             })
 
-        self.log.info('status=success, action=get_license_status, msg="Got agents status", '
+        self.log.info('status=success, action=get_health_agents_status, msg="Got agents status", '
                       'hostname="{}" count="{}"'.format(self.__core_hostname, len(agents)))
 
         return agents
@@ -140,7 +156,7 @@ class HealthMonitor(ModuleInterface, LoggingHandler):
                   "local_global_revision": local.get("globalRevision"),
                   "kb_db_name": remote.get("name")}
 
-        self.log.info('status=success, action=get_license_status, msg="Got license status", '
+        self.log.info('status=success, action=get_health_kb_status, msg="Got KB status", '
                       'hostname="{}"'.format(self.__core_hostname))
 
         return status

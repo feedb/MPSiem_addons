@@ -1,4 +1,4 @@
-from typing import Iterator, IO
+from typing import Iterator, IO, List, Optional
 
 from mpsiemlib.common import ModuleInterface, MPSIEMAuth, LoggingHandler, MPComponents, Settings
 from mpsiemlib.common import exec_request, get_metrics_start_time, get_metrics_took_time
@@ -14,6 +14,7 @@ class Tables(ModuleInterface, LoggingHandler):
     __api_table_truncate = "/api/events/v2/table_lists/{}/content"
     __api_table_list = "/api/events/v2/table_lists"
     __api_table_import = "/api/events/v1/table_lists/{}/import"
+    __api_table_add_row = "/api/events/v2/table_lists/{}/content"
 
     def __init__(self, auth: MPSIEMAuth, settings: Settings):
         ModuleInterface.__init__(self, auth, settings)
@@ -29,7 +30,7 @@ class Tables(ModuleInterface, LoggingHandler):
 
         :return: {'id': 'name'}
         """
-        self.log.debug('status=prepare, action=get_groups, msg="Try to get table list", '
+        self.log.debug('status=prepare, action=get_tables_list, msg="Try to get table list", '
                        'hostname="{}"'.format(self.__core_hostname))
 
         url = "https://{}{}".format(self.__core_hostname, self.__api_table_list)
@@ -113,7 +114,7 @@ class Tables(ModuleInterface, LoggingHandler):
 
         return response.get("items")
 
-    def set_table_data(self, table_name: str, data: IO) -> None:
+    def set_table_data(self, table_name: str, data: bytes) -> None:
         """
         Импортировать бинарные данные в табличный список.
         Данные должны быть в формате CSV, понятном MP SIEM.
@@ -172,7 +173,7 @@ class Tables(ModuleInterface, LoggingHandler):
         :param table_name: Имя таблицы
         :return: {'property': 'value'}
         """
-        self.log.debug('status=prepare, action=get_groups, msg="Try to get table info for {}", '
+        self.log.debug('status=prepare, action=get_table_info, msg="Try to get table info for {}", '
                        'hostname="{}"'.format(table_name, self.__core_hostname))
 
         table_id = self.get_table_id_by_name(table_name)
@@ -227,6 +228,88 @@ class Tables(ModuleInterface, LoggingHandler):
         if table_id is None:
             raise Exception("Table list {} not found in cache".format(table_name))
         return table_id.get("id")
+
+    def set_table_row(self, table_name: str, add_rows: Optional[List[dict]] = None, remove_rows: Optional[List[dict]] = None):
+        """
+        Опасная (без остановки правил) работа со строками, установленных в SIEM таблиц.
+
+        :param table_name: Имя таблицы
+        :param add_rows: [{"field1": "value"}]
+        :param remove_rows: [{"field1": "value"}]
+        :return:
+        """
+        self.log.debug('status=prepare, action=set_table_row, msg="Try to add|remove table row {}", '
+                       'hostname="{}"'.format(table_name, self.__core_hostname))
+
+        if add_rows is None and remove_rows is None:
+            self.log.info('status=prepare, action=set_table_row, msg="Nothing to add/remove for table {}", '
+                          'hostname="{}"'.format(table_name, self.__core_hostname))
+            return
+
+        # в API добавление/удаление строк идет без явного маппинга на название полей.
+        # маппинг определяется позицией значения в массиве, это неприемлемо
+        table_info = self.get_table_info(table_name)
+        if table_info.get("type") not in ["correlationrule", "enrichmentrule"]:
+            raise Exception("Unsupported table type to add/remove row")
+
+        row_matrix = []  # шаблон для вставки нужного размера, заполненный None
+        attrs_position = {}  # в какой позиции во вставляемом списке должен находится каждый атрибут
+        key_fields = set()  # перед вставкой надо убедиться, что присутствуют ключевые поля
+        not_nullable_fields = set()  # перед вставкой надо убедиться, что заданы все поля где запрещен null
+        counter = 0
+        for i in table_info.get("fields"):  # определяем в каких позициях должны быть атрибуты
+            name = i.get("name")
+            attrs_position[name] = counter
+            row_matrix.append(None)
+            if i.get("primaryKey"):
+                key_fields.add(name)
+            if not i.get("nullable"):
+                not_nullable_fields.add(name)
+            counter += 1
+
+        params = {"add": None, "remove": None}
+        if add_rows is not None:
+            params["add"] = self.__prepare_rows(add_rows, row_matrix, attrs_position, key_fields, not_nullable_fields)
+        if remove_rows is not None:
+            params["remove"] = self.__prepare_rows(remove_rows, row_matrix, attrs_position, key_fields, not_nullable_fields)
+
+        table_id = table_info.get("id")
+        api_url = self.__api_table_add_row.format(table_id)
+        url = "https://{}{}".format(self.__core_hostname, api_url)
+        rq = exec_request(self.__core_session,
+                          url, method="PUT",
+                          timeout=self.settings.connection_timeout,
+                          json=params)
+        response = rq.json()
+        if response.get("result") is None or response.get("result") != "success":
+            self.log.error('status=failed, action=set_table_row, '
+                           'msg="Got error while manipulate with table {} rows", '
+                           'hostname="{}", error="{}"'.format(table_name,
+                                                              self.__core_hostname,
+                                                              response.get("results")))
+            raise Exception("Got error while manipulate with table rows")
+
+        self.log.info('status=success, action=set_table_row, msg="Added {} rows Removed {} rows in table {}", '
+                      'hostname="{}"'.format(len(add_rows) if add_rows is not None else 0,
+                                             len(remove_rows) if remove_rows is not None else 0,
+                                             table_name,
+                                             self.__core_hostname))
+
+    def __prepare_rows(self, rows: List[dict], matrix: list, positions: dict, keys: set, not_nulls: set):
+        ret = list()
+        for r in rows:
+            tpl = matrix.copy()
+            if len(keys.intersection(set(r.keys()))) != len(keys):
+                raise Exception("Key fields {} not found in {}".format(keys, r))
+            if len(not_nulls.intersection(set(r.keys()))) != len(not_nulls):
+                raise Exception("Not nullable fields {} not found in {}".format(not_nulls, r))
+            for k, v in r.items():
+                pos = positions.get(k)
+                if pos is None:
+                    raise Exception("Key {} not found in schema {}".format(k, positions.keys()))
+                tpl[pos] = v
+            ret.append(tpl)
+        return ret
 
     def close(self):
         if self.__core_session is not None:

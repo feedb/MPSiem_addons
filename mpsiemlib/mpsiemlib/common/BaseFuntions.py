@@ -5,6 +5,7 @@ import time
 
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 log = logging.getLogger('Common')
@@ -25,7 +26,8 @@ def setup_logging(default_path='logging.yml', default_level=logging.INFO, env_ke
         logging.basicConfig(level=default_level)
 
 
-def exec_request(session: requests.Session, url: str, method='GET', timeout=30, timeout_up=1, **kwargs) -> requests.Response:
+def exec_request(session: requests.Session, url: str, method='GET', timeout=30, timeout_up=1,
+                 **kwargs) -> requests.Response:
     """
     Выполнение HTTP запросов
     Если в окружении MP_DEBUG_LOG_BODY, выводит в DEBUG лог сырой ответ от сервера
@@ -65,6 +67,11 @@ def exec_request(session: requests.Session, url: str, method='GET', timeout=30, 
                                       verify=False,
                                       timeout=(timeout * timeout_up),
                                       **kwargs)
+        elif method == 'PUT':
+            response = session.put(url,
+                                   verify=False,
+                                   timeout=(timeout * timeout_up),
+                                   **kwargs)
         else:
             response = session.get(url,
                                    verify=False,

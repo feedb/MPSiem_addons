@@ -92,6 +92,28 @@ class TablesTestCase(unittest.TestCase):
     def test_truncate(self):
         self.assertTrue(self.__module.truncate_table("test_tl_2_r23"))
 
+    def test_set_table_row(self):
+        add = [{"cust": "test1",
+                "user": "user1",
+                "session_stat": "12.12.2020 15:23:23"},
+               {"cust": "test2",
+                "user": "user2",
+                "session_stat": "12.12.2020 15:23:23"}
+               ]
+        self.__module.set_table_row("test_tl_2_r23", add_rows=add, remove_rows=None)
+        is_added = False
+        for i in self.__module.get_table_data("test_tl_2_r23"):
+            if i.get("cust") == "test1" and i.get("user") == "user1":
+                is_added = True
+
+        self.__module.set_table_row("test_tl_2_r23", add_rows=None, remove_rows=add)
+        is_removed = True
+        for i in self.__module.get_table_data("test_tl_2_r23"):
+            if i.get("cust") == "test1" and i.get("user") == "user1":
+                is_removed = False
+
+        self.assertTrue(is_added and is_removed)
+
 
 if __name__ == '__main__':
     unittest.main()

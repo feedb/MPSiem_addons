@@ -33,6 +33,12 @@ class ModuleNames:
     INCIDENTS = "incidents"
     SOURCE_MONITOR = "source_monitor"
 
+    @staticmethod
+    def get_modules_list():
+        return [ModuleNames.AUTH, ModuleNames.EVENTS, ModuleNames.TABLES,
+                ModuleNames.FILTERS, ModuleNames.TASKS, ModuleNames.HEALTH,
+                ModuleNames.URM, ModuleNames.KB, ModuleNames.INCIDENTS, ModuleNames.SOURCE_MONITOR]
+
 
 class MPComponents:
     """
