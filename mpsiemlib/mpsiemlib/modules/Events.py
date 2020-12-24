@@ -101,7 +101,7 @@ class Events(ModuleInterface, LoggingHandler):
         :param end: end timestamp
         :return: Iterator dicts {"field1_alias": "field1", "field2_alias": "field2", "count": 42}
         """
-        self.log.debug('status=prepare, action=get_groups, msg="Try to exec query with filter", '
+        self.log.debug('status=prepare, action=get_events, msg="Try to exec query with filter", '
                        'hostname="{}", filter="{}" begin="{}", end="{}"'.format(self.__storage_hostname,
                                                                                 filters,
                                                                                 begin,
@@ -121,6 +121,9 @@ class Events(ModuleInterface, LoggingHandler):
                                     raise_on_error=False,
                                     request_timeout=timeout_report_gen,
                                     preserve_order=True):
+                if (line_counter % self.settings.storage_batch_size) == 0:
+                    self.log.debug('status=failed, action=get_events, msg="Get rows from storage {}", '
+                                   'hostname="{}",'.format(line_counter, self.__storage_hostname))
                 line_counter += 1
                 yield hit
         except NotFoundError as nf_ex:
@@ -266,7 +269,7 @@ class ElasticQueryBuilder(LoggingHandler):
     """
     Построение запроса к Elastic по описанию вида
         es_filter: [
-            {"term": {"event_src/category": "DNS server"}}
+            '{"term": {"event_src/category": "DNS server"}}'
         ]
         es_filter_not: [
             '{"terms": {"event_src/category": ["Proxy server","Network device","Firewall","Web security"]}}'

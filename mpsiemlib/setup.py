@@ -10,5 +10,11 @@ setup(
     author=__author__,
     author_email='',
     description=__description__,
-    zip_safe=False
+    zip_safe=False,
+    python_requires='>=3.7',
+    install_requires=["requests",
+                      "PyYAML",
+                      "pytz",
+                      "elasticsearch>=7.10.0"]
+
 )

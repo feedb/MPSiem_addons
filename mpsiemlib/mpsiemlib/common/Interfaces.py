@@ -9,7 +9,7 @@ class Settings:
     storage_events_timezone = "UTC"  # в ES все события приведены к UTC
     local_timezone = "Europe/Moscow"  # в какой временной зоне работает скрипт
     storage_bucket_size = 33000  # размер бакета агрегации в Elastic (по умолчанию в конфиге 50000)
-    storage_batch_size = 1000  # размер выгружаемой пачки событий без агрегации
+    storage_batch_size = 10000  # размер выгружаемой пачки событий без агрегации
     tables_batch_size = 1000  # размер выгружаемой пачки записей из табличек
     kb_objects_batch_size = 1000  # размер выгружаемой пачки правил из KB
     incidents_batch_size = 100  # размер выгружаемой пачки инцидентов

@@ -1,4 +1,5 @@
-from typing import Iterator, IO, List, Optional
+from datetime import datetime
+from typing import Iterator, List, Optional
 
 from mpsiemlib.common import ModuleInterface, MPSIEMAuth, LoggingHandler, MPComponents, Settings
 from mpsiemlib.common import exec_request, get_metrics_start_time, get_metrics_took_time
@@ -8,6 +9,7 @@ class Tables(ModuleInterface, LoggingHandler):
     """
     Tables module
     """
+    __table_add_time_format = "%d.%m.%Y %H:%M:%S"
 
     __api_table_info = "/api/events/v2/table_lists/{}"
     __api_table_search = "/api/events/v2/table_lists/{}/content/search"
@@ -253,6 +255,7 @@ class Tables(ModuleInterface, LoggingHandler):
             raise Exception("Unsupported table type to add/remove row")
 
         row_matrix = []  # шаблон для вставки нужного размера, заполненный None
+        fileds_types = {}
         attrs_position = {}  # в какой позиции во вставляемом списке должен находится каждый атрибут
         key_fields = set()  # перед вставкой надо убедиться, что присутствуют ключевые поля
         not_nullable_fields = set()  # перед вставкой надо убедиться, что заданы все поля где запрещен null
@@ -260,6 +263,8 @@ class Tables(ModuleInterface, LoggingHandler):
         for i in table_info.get("fields"):  # определяем в каких позициях должны быть атрибуты
             name = i.get("name")
             attrs_position[name] = counter
+            fileds_types[name] = i.get("type")
+
             row_matrix.append(None)
             if i.get("primaryKey"):
                 key_fields.add(name)
@@ -269,9 +274,19 @@ class Tables(ModuleInterface, LoggingHandler):
 
         params = {"add": None, "remove": None}
         if add_rows is not None:
-            params["add"] = self.__prepare_rows(add_rows, row_matrix, attrs_position, key_fields, not_nullable_fields)
+            params["add"] = self.__prepare_rows(add_rows,
+                                                row_matrix,
+                                                attrs_position,
+                                                key_fields,
+                                                not_nullable_fields,
+                                                fileds_types)
         if remove_rows is not None:
-            params["remove"] = self.__prepare_rows(remove_rows, row_matrix, attrs_position, key_fields, not_nullable_fields)
+            params["remove"] = self.__prepare_rows(remove_rows,
+                                                   row_matrix,
+                                                   attrs_position,
+                                                   key_fields,
+                                                   not_nullable_fields,
+                                                   fileds_types)
 
         table_id = table_info.get("id")
         api_url = self.__api_table_add_row.format(table_id)
@@ -295,19 +310,32 @@ class Tables(ModuleInterface, LoggingHandler):
                                              table_name,
                                              self.__core_hostname))
 
-    def __prepare_rows(self, rows: List[dict], matrix: list, positions: dict, keys: set, not_nulls: set):
+    def __prepare_rows(self, rows: List[dict], matrix: list, positions: dict, keys: set, not_nulls: set, fields_types: dict):
         ret = list()
         for r in rows:
             tpl = matrix.copy()
+
             if len(keys.intersection(set(r.keys()))) != len(keys):
                 raise Exception("Key fields {} not found in {}".format(keys, r))
             if len(not_nulls.intersection(set(r.keys()))) != len(not_nulls):
                 raise Exception("Not nullable fields {} not found in {}".format(not_nulls, r))
+
             for k, v in r.items():
                 pos = positions.get(k)
                 if pos is None:
                     raise Exception("Key {} not found in schema {}".format(k, positions.keys()))
-                tpl[pos] = v
+
+                # конвертируем типы данных т.к. при построчной вставке есть особенности
+                field_type = fields_types.get(k)
+                converted = None
+                if field_type == "number" and type(v) is not int:
+                    converted = int(v)
+                elif field_type == "datetime" and type(v) is not int:
+                    converted = round(datetime.strptime(v, self.__table_add_time_format).timestamp())
+                else:
+                    converted = v
+
+                tpl[pos] = converted
             ret.append(tpl)
         return ret
 
