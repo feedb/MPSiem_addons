@@ -12,12 +12,14 @@ class URMTestCase(unittest.TestCase):
     __creds_ldap = creds_ldap
     __settings = settings
 
-    def setUp(self) -> None:
-        self.__mpsiemworker = MPSIEMWorker(self.__creds_ldap, self.__settings)
-        self.__module = self.__mpsiemworker.get_module(ModuleNames.URM)
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.__mpsiemworker = MPSIEMWorker(cls.__creds_ldap, cls.__settings)
+        cls.__module = cls.__mpsiemworker.get_module(ModuleNames.URM)
 
-    def tearDown(self) -> None:
-        self.__module.close()
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.__module.close()
 
     def test_get_applications_list(self):
         ret = self.__module.get_applications_list()

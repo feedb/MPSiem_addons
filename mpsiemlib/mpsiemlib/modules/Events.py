@@ -86,7 +86,7 @@ class Events(ModuleInterface, LoggingHandler):
             yield schema
 
         line_counter = len(converted_response)
-        self.log.info('status=success, action=get_groups, msg="Query executed, response have been red", '
+        self.log.info('status=success, action=get_groups, msg="Query executed, response have been read", '
                       'hostname="{}", lines={}'.format(self.__storage_hostname, line_counter))
         self.log.info('hostname="{}", metric=get_groups, took={}ms, objects={}'.format(self.__storage_hostname,
                                                                                        took_time,
@@ -135,7 +135,7 @@ class Events(ModuleInterface, LoggingHandler):
                 raise Exception(nf_ex.error)
 
         took_time = get_metrics_took_time(start_time)
-        self.log.info('status=success, action=get_events, msg="Query executed, response have been red", '
+        self.log.info('status=success, action=get_events, msg="Query executed, response have been read", '
                       'hostname="{}", lines={}'.format(self.__storage_hostname, line_counter))
         self.log.info('hostname="{}", metric=get_events, took={}ms, objects={}'.format(self.__storage_hostname,
                                                                                        took_time,

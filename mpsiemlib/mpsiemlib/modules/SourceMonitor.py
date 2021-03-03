@@ -76,7 +76,7 @@ class SourceMonitor(ModuleInterface, LoggingHandler):
                        }
         took_time = get_metrics_took_time(start_time)
 
-        self.log.info('status=success, action=get_sources_list, msg="Query executed, response have been red", '
+        self.log.info('status=success, action=get_sources_list, msg="Query executed, response have been read", '
                       'hostname="{}", lines={}'.format(self.__core_hostname, line_counter))
         self.log.info('hostname="{}", metric=get_sources_list, took={}ms, objects={}'.format(self.__core_hostname,
                                                                                              took_time,
@@ -126,7 +126,7 @@ class SourceMonitor(ModuleInterface, LoggingHandler):
                        }
         took_time = get_metrics_took_time(start_time)
 
-        self.log.info('status=success, action=get_forwarders_list, msg="Query executed, response have been red", '
+        self.log.info('status=success, action=get_forwarders_list, msg="Query executed, response have been read", '
                       'hostname="{}", lines={}'.format(self.__core_hostname, line_counter))
         self.log.info('hostname="{}", metric=get_forwarders_list, took={}ms, objects={}'.format(self.__core_hostname,
                                                                                                 took_time,

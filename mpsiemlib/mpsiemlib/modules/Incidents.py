@@ -44,7 +44,7 @@ class Incidents(ModuleInterface, LoggingHandler):
         self.__core_version = auth.get_core_version()
         self.__incidents_mapping = {}
 
-        if "23." in self.__core_version:
+        if ("23." in self.__core_version) or ("24." in self.__core_version):
             self.__api_incident_comments = self.__api_incident_comments_new
             self.__api_incident_info = self.__api_incident_info_new
         else:
@@ -82,7 +82,7 @@ class Incidents(ModuleInterface, LoggingHandler):
 
         time_from = None
         time_to = None
-        if "23." in self.__core_version:
+        if ("23." in self.__core_version) or ("24." in self.__core_version):
             time_from = datetime.fromtimestamp(begin, tz=pytz.timezone("UTC")).strftime(self.__time_format)
             time_to = datetime.fromtimestamp(end, tz=pytz.timezone("UTC")).strftime(self.__time_format)
         else:
@@ -137,7 +137,7 @@ class Incidents(ModuleInterface, LoggingHandler):
                        "severity": i.get("severity", "").lower()}
         took_time = get_metrics_took_time(start_time)
 
-        self.log.info('status=success, action=get_incidents_list, msg="Query executed, response have been red", '
+        self.log.info('status=success, action=get_incidents_list, msg="Query executed, response have been read", '
                       'hostname="{}", filter="{}", lines={}'.format(self.__core_hostname,
                                                                     filters,
                                                                     line_counter))

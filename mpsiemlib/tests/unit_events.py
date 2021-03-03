@@ -17,14 +17,16 @@ class EventsTestCase(unittest.TestCase):
     __begin = 0
     __end = 0
 
-    def setUp(self) -> None:
-        self.__mpsiemworker = MPSIEMWorker(self.__creds_ldap, self.__settings)
-        self.__module = self.__mpsiemworker.get_module(ModuleNames.EVENTS)
-        self.__end = round(datetime.now(tz=pytz.timezone(settings.local_timezone)).timestamp())
-        self.__begin = self.__end - 86400
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.__mpsiemworker = MPSIEMWorker(cls.__creds_ldap, cls.__settings)
+        cls.__module = cls.__mpsiemworker.get_module(ModuleNames.EVENTS)
+        cls.__end = round(datetime.now(tz=pytz.timezone(settings.local_timezone)).timestamp())
+        cls.__begin = cls.__end - 86400
 
-    def tearDown(self) -> None:
-        self.__module.close()
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.__module.close()
 
     def test_get_groups_simple(self):
         filters = {

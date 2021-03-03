@@ -35,12 +35,14 @@ class KBTestCase(unittest.TestCase):
 
         return db_name
 
-    def setUp(self) -> None:
-        self.__mpsiemworker = MPSIEMWorker(self.__creds_ldap, self.__settings)
-        self.__module = self.__mpsiemworker.get_module(ModuleNames.KB)
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.__mpsiemworker = MPSIEMWorker(cls.__creds_ldap, cls.__settings)
+        cls.__module = cls.__mpsiemworker.get_module(ModuleNames.KB)
 
-    def tearDown(self) -> None:
-        self.__module.close()
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.__module.close()
 
     def test_get_databases_list(self):
         ret = self.__module.get_databases_list()

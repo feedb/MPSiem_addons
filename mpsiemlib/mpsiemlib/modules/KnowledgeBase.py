@@ -481,7 +481,7 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                        "deployment_status": i.get("DeploymentStatus", '').lower()}
         took_time = get_metrics_took_time(start_time)
 
-        self.log.info('status=success, action=get_all_objects, msg="Query executed, response have been red", '
+        self.log.info('status=success, action=get_all_objects, msg="Query executed, response have been read", '
                       'hostname="{}", filter="{}", lines={}, db="{}"'.format(self.__kb_hostname,
                                                                              filters,
                                                                              line_counter,
@@ -682,7 +682,7 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                 yield i
         took_time = get_metrics_took_time(start_time)
 
-        self.log.info('status=success, action=get_table_data, msg="Query executed, response have been red", '
+        self.log.info('status=success, action=get_table_data, msg="Query executed, response have been read", '
                       'hostname="{}", lines={}, db="{}"'.format(self.__kb_hostname, line_counter, db_name))
         self.log.info('hostname="{}", metric=get_table_data, took={}ms, lines={}'.format(self.__kb_hostname,
                                                                                          took_time,

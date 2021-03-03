@@ -7,6 +7,8 @@ from .Interfaces import LoggingHandler, AuthType, MPComponents, AuthInterface, S
 from .BaseFuntions import exec_request
 
 from requests import RequestException
+# TODO: requests.utils.urlparse ?
+from urllib.parse import urlparse
 
 
 class MPSIEMAuth(AuthInterface, LoggingHandler):
@@ -39,7 +41,7 @@ class MPSIEMAuth(AuthInterface, LoggingHandler):
         AuthInterface.__init__(self, creds, settings)
         LoggingHandler.__init__(self)
         self.__session = None
-        self.__is_connected_core = False
+        self.__is_connected = False
         self.__component = MPComponents.CORE
         self.__storage_version = None
         self.__core_version = None
@@ -136,8 +138,23 @@ class MPSIEMAuth(AuthInterface, LoggingHandler):
             'newPassword': None
         }
         try:
-            self.log.debug('hostname="{}", url="{}", status=prepare, action=auth, msg="Auth. Phase 1. Send creds."'.
-                           format(self.creds.core_hostname, login_url))
+            pre_auth_url = 'https://{}{}'.format(self.creds.core_hostname, self.__api_core_auth_form_page)
+
+            # Нужно для иерархий
+            self.log.debug('hostname="{}", url={}, status=prepare, action=auth, '
+                           'msg="Auth. Phase 0. Get MC redirect"'.
+                           format(self.creds.core_hostname, pre_auth_url))
+            r = exec_request(self.__session, pre_auth_url, method='GET', timeout=self.settings.connection_timeout)
+            # TODO: Save main mc address for future use?
+            main_ms = urlparse(r.url)
+            self.log.debug('hostname="{}", url="{}", status=prepare, action=auth, msg="Auth. Phase 1. Response.", '
+                           'url_main_ms="{}"'.format(main_ms.hostname, pre_auth_url, main_ms))
+            login_url = 'https://{}:{}{}'.format(main_ms.hostname,
+                                                 self.__ms_port,
+                                                 self.__api_core_auth_login_page)
+
+            self.log.debug('hostname="{}", url="{}", status=prepare, action=auth, msg="Auth. Phase 2. Send creds."'.
+                           format(main_ms.hostname, login_url))
             r = exec_request(self.__session,
                              login_url,
                              timeout=self.settings.connection_timeout,
@@ -155,7 +172,7 @@ class MPSIEMAuth(AuthInterface, LoggingHandler):
             auth_url = 'https://{}{}'.format(self.creds.core_hostname, self.__api_core_auth_form_page)
 
             self.log.debug('hostname="{}", url={}, status=prepare, action=auth, '
-                           'msg="Auth. Phase 2. Get auth form"'.
+                           'msg="Auth. Phase 3. Get auth form"'.
                            format(self.creds.core_hostname, auth_url))
             r = exec_request(self.__session, auth_url, method='GET', timeout=self.settings.connection_timeout)
 
@@ -163,7 +180,7 @@ class MPSIEMAuth(AuthInterface, LoggingHandler):
                 form_action, form_data = self.__core_parse_form(r.text)
 
                 self.log.debug('hostname="{}", url={}, status=prepare, action=auth, '
-                               'msg="Auth. Phase 3. Send data form"'.
+                               'msg="Auth. Phase 4. Send data form"'.
                                format(self.creds.core_hostname, form_action))
                 r = exec_request(self.__session, form_action,
                                  method='POST',
