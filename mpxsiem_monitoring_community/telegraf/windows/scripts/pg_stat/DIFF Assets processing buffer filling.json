@@ -1,0 +1,8 @@
+{
+	"dashboard": "Assets processing buffer filling",
+	"database1": "maxpatrol_assets_processing",
+	"query1": "select Value from checkpoints WHERE Id = 'IdentificationService'",
+	"database2": "MP_Assets_Identification",
+	"query2": "select max(checkpoint) from commits where streamtype in ('ScopeKeySet', 'IdentityRemoveProcessManager','IdentityExpirationProcessManager')",
+	"lag_is_diff": 1
+}

@@ -1,0 +1,7 @@
+{
+	"dashboard": "Dynamic groups processing",
+	"database1": "maxpatrol_assets_processing",
+	"query1": "select Value from public.checkpoints WHERE Id = 'GroupsService'",
+	"database2": "maxpatrol_assets_processing",
+	"query2": "select count(*) from commits where streamtype in('Asset','AssetInputProcessManager','AssetsGroupsRelocationProcessManager','AssetsRemoveProcessManager','Group','Scope') and checkpoint>{val}"
+}

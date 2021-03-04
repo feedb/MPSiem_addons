@@ -1,0 +1,8 @@
+{
+	"dashboard": "Temporal readmodel processing",
+	"database1": "maxpatrol_assets_temporal_rm",
+	"query1": " select Value from \"checkpoints\" WHERE Id = 'AssetsEventProcessingService'",
+	"database2": "maxpatrol_assets_processing",
+	"query2": "select count(*) from commits where streamtype in('Asset','AssetInputProcessManager','VulnerableAsset','AssetsRemoveProcessManager','Group','Scope','GroupAsset','AssetsPassportUpdateProcessManager','AssetsGroupsRelocationProcessManager','GroupOperationProcessManager','Tag','VulnerabilityOperationProcessManager','TagRemoveProcessManager') and checkpoint>{val}"
+	
+}

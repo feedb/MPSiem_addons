@@ -1,0 +1,8 @@
+{
+	"dashboard": "Assets processing buffer processing",
+	"database1": "maxpatrol_assets_processing",
+	"query1": "select count(distinct(identity_checkpoint)) from __asset_identity_commands_queue",
+	"database2": "maxpatrol_assets_processing",
+	"query2": "select count(distinct(identity_checkpoint)) from __asset_identity_commands_queue"
+	
+}
