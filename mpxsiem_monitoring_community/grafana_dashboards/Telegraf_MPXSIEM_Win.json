@@ -17,7 +17,7 @@
   "gnetId": 1902,
   "graphTooltip": 1,
   "id": 41,
-  "iteration": 1614847215341,
+  "iteration": 1614848740006,
   "links": [
     {
       "asDropdown": false,
@@ -4896,9 +4896,10 @@
       {
         "allValue": null,
         "current": {
-          "selected": true,
-          "text": "stability-aio",
-          "value": "stability-aio"
+          "isNone": true,
+          "selected": false,
+          "text": "None",
+          "value": ""
         },
         "datasource": "$DataSource",
         "error": null,
@@ -4908,7 +4909,7 @@
         "multi": false,
         "name": "host",
         "options": [],
-        "query": "SHOW TAG VALUES WITH KEY = \"host\"",
+        "query": "SHOW TAG VALUES WITH KEY = \"host\" WHERE system = 'windows'",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -4923,7 +4924,6 @@
         "allValue": null,
         "current": {
           "selected": true,
-          "tags": [],
           "text": [
             "All"
           ],
@@ -4932,6 +4932,7 @@
           ]
         },
         "datasource": "$DataSource",
+        "definition": "",
         "error": null,
         "hide": 0,
         "includeAll": true,
@@ -4962,6 +4963,7 @@
           ]
         },
         "datasource": "$DataSource",
+        "definition": "",
         "error": null,
         "hide": 2,
         "includeAll": true,
@@ -4992,6 +4994,7 @@
           ]
         },
         "datasource": "$DataSource",
+        "definition": "",
         "error": null,
         "hide": 0,
         "includeAll": true,
@@ -5022,6 +5025,7 @@
           ]
         },
         "datasource": "$DataSource",
+        "definition": "",
         "error": null,
         "hide": 2,
         "includeAll": true,
@@ -5052,6 +5056,7 @@
           ]
         },
         "datasource": "$DataSource",
+        "definition": "",
         "error": null,
         "hide": 2,
         "includeAll": true,
@@ -5124,5 +5129,5 @@
   "timezone": "browser",
   "title": "Telegraf_MPXSIEM_Win",
   "uid": "x940iFimk",
-  "version": 7
+  "version": 8
 }
