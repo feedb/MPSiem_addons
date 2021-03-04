@@ -19,12 +19,13 @@
 1.  Качаем последнюю версию телеграф агента для вашей операционной системы: https://portal.influxdata.com/downloads/
 2.  Устанавливаем сервис telegraf агента:
     *  Для Windows:
-       1.   Распаковываем файлы агента в любую папку, например C:\Program Files\telegraf
+       1.   Распаковываем файлы агента в папку, например C:\telegraf
        2.   Заменяем предварительно настроенный конфиг telegraf.conf из данного репозитория
        3.   Выполняем установку и запуск сервиса:
-            *  `"C:\Program Files\telegraf\telegraf.exe" --config "C:\Program Files\telegraf\telegraf.conf" --service install`
+            *  `"C:\telegraf\telegraf.exe" --config "C:\telegraf\telegraf.conf" --service install`
             *  `sc config telegraf start= delayed-auto`
             *  `sc start telegraf`
+       4.   Копируем папки: telegraf.d и scripts с файлами из проекта, в папку C:\telegraf
     *   Для Linux:
        1.   Команда для установки представлена по ссылке https://portal.influxdata.com/downloads/ в п.1
        2.   Заменяем предварительно настроенный конфиг telegraf.conf из данного репозитория в /etc/telegraf
