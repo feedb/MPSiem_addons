@@ -20,7 +20,6 @@
 
 Более детальное описание в [CHANGELOG.md](CHANGELOG.md)
 
-
 ## Сетевой доступ и права
 Для работы SDK необходимы следующие сетевые разрешения:
 - MP Core: tcp 443, tcp 3333, tcp 3334
@@ -30,8 +29,9 @@
 SDK аутентифицируется в Core и PT KB.  
 Ряд функций требует административной учетной записи в IAM, PT KB, SIEM.
 
-# Roadmap
-1. Создание пользователей и ролей
+# Спасибо за помощь
+[mkosmach](https://github.com/mkosmach), [GenRockeR](https://github.com/GenRockeR), [srublev](https://github.com/srublev)
+
 
 # Release Notes
 [CHANGELOG.md](CHANGELOG.md)

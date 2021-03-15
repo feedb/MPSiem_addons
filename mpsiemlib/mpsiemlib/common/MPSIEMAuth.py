@@ -364,5 +364,5 @@ class MPSIEMAuth(AuthInterface, LoggingHandler):
 
         self.__is_connected = True
         self.log.info('hostname="{}", status=success, action=check_kb_version, '
-                      'version="{}"'.format(self.creds.core_hostname, self.__core_version))
+                      'version="{}"'.format(self.creds.core_hostname, self.__kb_version))
         self.log.info('hostname="{}", status=success, action=auth'.format(self.creds.core_hostname))

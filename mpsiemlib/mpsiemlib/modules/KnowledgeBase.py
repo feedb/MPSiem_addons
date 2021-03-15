@@ -13,20 +13,53 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
     __kb_port = 8091
 
     #  обрабатывается в KB
-    __api_deploy_object = '/api-studio/siem/deploy'
-    __api_deploy_log = '/api-studio/siem/deploy/log'
-    __api_list_objects = '/api-studio/siem/objects/list'
-    __api_kb_db_list = '/api-studio/content-database-selector/content-databases'
-    __api_rule_code = '/api-studio/siem/{}-rules/{}'
-    __api_table_info = '/api-studio/siem/tabular-lists/{}'
-    __api_table_rows = '/api-studio/siem/tabular-lists/{}/rows'
-    __api_groups_list = '/api-studio/siem/groups'
-    __api_folders_packs_list = '/api-studio/siem/folders/tree?includeObjects=true'
+    __api_root = '/api-studio'
+    __api_kb_db_list = f'{__api_root}/content-database-selector/content-databases'
+    __api_temp_file_storage_upload = f'{__api_root}/tempFileStorage/upload'
+    __api_siem = f'{__api_root}/siem'
+    __api_deploy_object = f'{__api_siem}/deploy'
+    __api_deploy_log = f'{__api_siem}/deploy/log'
+    __api_list_objects = f'{__api_siem}/objects/list'
+    __api_rule_code = f'{__api_siem}' + '/{}-rules/{}'
+    __api_table_info = f'{__api_siem}' + '/tabular-lists/{}'
+    __api_table_rows = f'{__api_siem}' + '/tabular-lists/{}/rows'
+    __api_groups = f'{__api_siem}/groups'
+    __api_folders_packs_list = f'{__api_siem}/folders/tree?includeObjects=true'
+    __api_folders = f'{__api_siem}/folders'
+    __api_co_rules = f'{__api_siem}/correlation-rules'
+    __api_export = f'{__api_siem}/export'
+    __api_import = f'{__api_siem}/import'
 
     # обрабатывается в Core
     __api_rule_running_info = "/api/siem/v2/rules/{}/{}"
     __api_rule_stop = "/api/siem/v2/rules/{}/commands/stop"
     __api_rule_start = "/api/siem/v2/rules/{}/commands/start"
+
+    # Форматы экспорта
+    EXPORT_FORMAT_KB = 'kb'
+    EXPORT_FORMAT_SIEM_LITE = 'siem'
+
+    # Режимы импорта
+
+    # Добавить и обновить объекты из файла
+    #
+    # Все объекты из файла добавятся как пользовательские.
+    # Существующие в системе объекты будут заменены, в том числе
+    # записи табличных списков.
+    IMPORT_ADD_AND_UPDATE = 'upsert'
+
+    # Добавить объекты Локальная система как системные
+    #
+    # Будут импортированы только объекты Локальная система.
+    # Новые объекты добавятся, существующие будут заменены.
+    IMPORT_LOCAL_SYSTEM_AS_SYSTEM = 'upsert_origin'
+
+    # Синхронизировать объекты Локальная система с содержимым файла
+    #
+    # Будут импортированы только объекты Локальная система.
+    # Существующие объекты будут заменены на объекты из файла,
+    # а объекты, которых нет в файле, будут удалены из системы.
+    IMPORT_SYNC_SYSTEM = 'replace_origin'
 
     def __init__(self, auth: MPSIEMAuth, settings: Settings):
         ModuleInterface.__init__(self, auth, settings)
@@ -269,7 +302,7 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
             return self.__groups
         headers = {'Content-Database': db_name,
                    'Content-Locale': 'RUS'}
-        url = "https://{}:{}{}".format(self.__kb_hostname, self.__kb_port, self.__api_groups_list)
+        url = "https://{}:{}{}".format(self.__kb_hostname, self.__kb_port, self.__api_groups)
 
         r = exec_request(self.__kb_session,
                          url,
@@ -705,6 +738,356 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
             raise Exception("KB data request return None or has wrong response structure")
 
         return response.get("Rows")
+
+    def create_folder(self, db_name: str, name: str, parent_id: Optional[str] = None) -> str:
+        """
+        Создать папку для контента
+
+        :param db_name: Имя БД
+        :param name: Имя создаваемой папки
+        :param parent_id: Идентификатор родительской папки
+        :return: ID созданной папки
+        """
+        params = {
+                    "name": name,
+                    "parentId": parent_id
+                  }
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+        url = "https://{hostname}:{port}{endpoint}".format(hostname=self.__kb_hostname,
+                                                           port=self.__kb_port,
+                                                           endpoint=self.__api_folders)
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='POST',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers,
+                         json=params)
+
+        if r.status_code == 201:
+            self.log.info('status=success, action=create_folder, msg="created folder {} with id {}", '
+                          'hostname="{}", db="{}"'.format(name, r.json(), self.__kb_hostname, db_name))
+        else:
+            self.log.error('status=failed, action=create_folder, msg="failed to create folder {}", '
+                           'hostname="{}", db="{}"'.format(name, self.__kb_hostname, db_name))
+
+        return r.json()
+
+    def delete_folder(self, db_name: str, folder_id: str):
+        """
+        Удалить папку
+
+        :param db_name: Имя БД
+        :param folder_id: ID удаляемой папки
+        :return: Объект Response
+        """
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+        url = "https://{hostname}:{port}{endpoint}/{folderId}".format(
+            hostname=self.__kb_hostname,
+            port=self.__kb_port,
+            endpoint=self.__api_folders,
+            folderId=folder_id
+        )
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='DELETE',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers)
+
+        if r.status_code == 204:
+            self.log.info('status=success, action=delete_folder, msg="deleted folder {}", '
+                          'hostname="{}", db="{}"'.format(folder_id, self.__kb_hostname, db_name))
+        else:
+            self.log.error('status=failed, action=delete_folder, msg="failed to delete folder {}", '
+                           'hostname="{}", db="{}"'.format(folder_id, self.__kb_hostname, db_name))
+
+        return r
+
+    def create_co_rule(self, db_name: str, name: str, code: str, ru_desc: Optional[str],
+                       folder_id: str, group_ids: Optional[list] = []) -> str:
+        """
+        Создать правило корреляции
+
+        :param db_name: Имя БД
+        :param name: имя создаваемого правила корреляции
+        :param code: код правила
+        :param ru_desc: описание в русской локали
+        :param folder_id: ID каталога, в который разместить правило
+        :param group_ids: ID наборов установки, в которые включить правило
+        :return: ID созданного правила
+        """
+        params = {
+            "systemName": name,
+            "formula": code,
+            "description": {},
+            "folderId": folder_id,
+            "groupsToSave": group_ids,
+            "localizationRulesToAdd": [],
+            "mappingConflictAction": "exception"
+        }
+
+        if ru_desc:
+            params.update({
+                "description": {
+                    "RUS": ru_desc
+                }
+            })
+
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+        url = "https://{hostname}:{port}{endpoint}".format(
+            hostname=self.__kb_hostname,
+            port=self.__kb_port,
+            endpoint=self.__api_co_rules
+        )
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='POST',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers,
+                         json=params)
+
+        if r.status_code == 201:
+            self.log.info('status=success, action=create_co_rule, msg="created co rule {} with id {}", '
+                          'hostname="{}", db="{}"'.format(name, r.json(), self.__kb_hostname, db_name))
+        else:
+            self.log.error('status=failed, action=create_co_rule, msg="failed to create co rule {}", '
+                           'hostname="{}", db="{}"'.format(name, self.__kb_hostname, db_name))
+
+        return r.json()
+
+    def delete_co_rule(self, db_name: str, rule_id: str):
+        """
+        Удалить правило корреляции
+
+        :param db_name: Имя БД
+        :param rule_id: ID правила
+        :return: Объект Response
+        """
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+        url = "https://{hostname}:{port}{endpoint}/{ruleId}".format(hostname=self.__kb_hostname,
+                                                                    port=self.__kb_port,
+                                                                    endpoint=self.__api_co_rules,
+                                                                    ruleId=rule_id)
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='DELETE',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers)
+
+        if r.status_code == 204:
+            self.log.info('status=success, action=delete_co_rule, msg="deleted co rule {}", '
+                          'hostname="{}", db="{}"'.format(rule_id, self.__kb_hostname, db_name))
+        else:
+            self.log.error('status=failed, action=delete_co_rule, msg="failed to delete co rule {}", '
+                           'hostname="{}", db="{}"'.format(rule_id, self.__kb_hostname, db_name))
+
+        return r
+
+    def create_group(self, db_name: str, name: str, parent_id: Optional[str] = None) -> str:
+        """
+        Создать набор установки
+
+        :param db_name: Имя БД
+        :param name: Имя набора установки
+        :param parent_id: ID родительского набора установки
+        :return: ID созданного набора установки
+        """
+        params = {
+            "systemName": name,
+            "parentGroupId": parent_id,
+            "locales": []
+        }
+
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+        url = "https://{hostname}:{port}{endpoint}".format(
+            hostname=self.__kb_hostname,
+            port=self.__kb_port,
+            endpoint=self.__api_groups
+        )
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='POST',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers,
+                         json=params)
+
+        if r.status_code == 201:
+            self.log.info('status=success, action=create_group, msg="created group {} with id {}", '
+                          'hostname="{}", db="{}"'.format(name, r.json(), self.__kb_hostname, db_name))
+        else:
+            self.log.error('status=failed, action=create_group, msg="failed to create group {}", '
+                           'hostname="{}", db="{}"'.format(name, self.__kb_hostname, db_name))
+
+        return r.json()
+
+    def delete_group(self, db_name: str, group_id: str):
+        """
+        Удалить набор установки
+
+        :param db_name: Имя БД
+        :param group_id: ID удаляемого набора установки
+        :return: Объект Response
+        """
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+
+        params = {"MappingConflictAction": "exception"}
+
+        url = "https://{hostname}:{port}{endpoint}/{ruleId}".format(hostname=self.__kb_hostname,
+                                                                    port=self.__kb_port,
+                                                                    endpoint=self.__api_groups,
+                                                                    ruleId=group_id)
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='DELETE',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers,
+                         json=params)
+
+        if r.status_code == 204:
+            self.log.info('status=success, action=delete_group, msg="deleted group {}", '
+                          'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
+        else:
+            self.log.error('status=failed, action=delete_group, msg="failed to delete group {}", '
+                           'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
+
+        return r
+
+    def export_group(self, db_name: str, group_id: str, local_filepath: str,
+                     export_format: Optional[str] = EXPORT_FORMAT_KB) -> int:
+        """
+        Экспортировать набор установки
+
+        :param db_name: имя БД
+        :param group_id: ID набора установки
+        :param local_filepath: файл в который сохранить набор установки
+        :param export_format: формат экспорта (KB / SIEM Lite)
+        :return: размер созданного файла
+        """
+
+        headers = {'Content-Locale': 'RUS'}
+
+        params = {
+            "format": export_format,
+            "groupId": group_id,
+            "mode": "group"
+        }
+
+        url = "https://{hostname}:{port}{endpoint}/?contentDatabase={db_name}".format(
+            hostname=self.__kb_hostname,
+            port=self.__kb_port,
+            endpoint=self.__api_export,
+            db_name=db_name
+        )
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='POST',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers,
+                         json=params)
+
+        retval = 0
+        if r.status_code == 201:
+
+            with open(local_filepath, 'wb') as kbfile:
+                retval = kbfile.write(r.content)
+
+            self.log.info('status=success, action=export_group, msg="group {} exported", '
+                          'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
+        else:
+            self.log.error('status=failed, action=export_group, msg="failed to export group {}", '
+                           'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
+
+        return retval
+
+    def import_group(self, db_name: str, filename: str, mode: Optional[str] = IMPORT_ADD_AND_UPDATE) -> int:
+        """
+        Импортировать набор установки
+
+        :param db_name: имя БД
+        :param filename: имя файла набора установки
+        :param mode: режим импорта
+        :return: response_code
+        """
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS',
+                   'Content-Type': 'application/octet-stream'}
+
+        url = "https://{hostname}:{port}{endpoint}?fileName={filename}&storageType=Temp".format(
+            hostname=self.__kb_hostname,
+            port=self.__kb_port,
+            endpoint=self.__api_temp_file_storage_upload,
+            filename=filename
+        )
+
+        uploaded_id = ""
+        with open(filename, 'rb') as kbfile:
+
+            r = exec_request(self.__kb_session,
+                             url,
+                             method='POST',
+                             timeout=self.settings.connection_timeout,
+                             headers=headers,
+                             data=kbfile,
+                             )
+
+            if r.status_code == 201:
+                # Upload successful
+                uploaded_id = r.json().get('UploadId')
+                self.log.info('status=success, action=upload_file, msg="file {} uploaded", '
+                              'hostname="{}", db="{}"'.format(filename, self.__kb_hostname, db_name))
+            else:
+                self.log.error('status=failed, action=upload_file, msg="failed to upload file {}", '
+                               'hostname="{}", db="{}"'.format(filename, self.__kb_hostname, db_name))
+
+        if uploaded_id:
+            # make import
+
+            headers = {'Content-Database': db_name,
+                       'Content-Locale': 'RUS'}
+
+            params = {
+                "importMacros": False,
+                "mode": mode,
+                "uploadId": uploaded_id
+            }
+
+            url = "https://{hostname}:{port}{endpoint}".format(
+                hostname=self.__kb_hostname,
+                port=self.__kb_port,
+                endpoint=self.__api_import
+            )
+
+            r = exec_request(self.__kb_session,
+                             url,
+                             method='POST',
+                             timeout=self.settings.connection_timeout,
+                             headers=headers,
+                             json=params,
+                             )
+
+            if r.status_code == 201:
+                # Upload successful
+                self.log.info('status=success, action=import_file, msg="file {} imported", '
+                              'hostname="{}", db="{}"'.format(filename, self.__kb_hostname, db_name))
+            else:
+                self.log.error('status=failed, action=import_file, msg="failed to import file {}", '
+                               'hostname="{}", db="{}"'.format(filename, self.__kb_hostname, db_name))
+
+            return r.status_code
+        else:
+            return -1
 
     def close(self):
         if self.__kb_session is not None:

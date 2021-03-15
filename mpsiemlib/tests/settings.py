@@ -24,5 +24,7 @@ creds_ldap.core_auth_type = AuthType.LDAP
 creds_ldap.core_login = os.getenv("MP_LOGIN")
 creds_ldap.core_pass = os.getenv("MP_PASS")
 
+# Использовать локальную аутентификацию в тестах если это требуется
+creds = creds_local if os.getenv("USE_LOCAL_AUTH") else creds_ldap
 
 settings = Settings()

@@ -1,17 +1,24 @@
 import time
 import unittest
+import os
 
 from mpsiemlib.common import *
 from mpsiemlib.modules import MPSIEMWorker
 
-from tests.settings import creds_ldap, settings
+from tests.settings import creds, settings
+from random import choice
+from string import ascii_uppercase, ascii_lowercase
+from uuid import UUID
+from tempfile import TemporaryDirectory
 
 
 class KBTestCase(unittest.TestCase):
     __mpsiemworker = None
     __module = None
-    __creds_ldap = creds_ldap
+    __creds = creds
     __settings = settings
+
+    __test_co_rule = "event Event:\n\tkey:\n\t\tsrc.ip\n\tfilter {\n        msgid == \"4688\"\n\t}\n\nrule TestRule: Event\nemit {\n\t$id = 'TestRule'\n}"
 
     def __choose_any_db(self):
         dbs = self.__module.get_databases_list()
@@ -37,7 +44,7 @@ class KBTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.__mpsiemworker = MPSIEMWorker(cls.__creds_ldap, cls.__settings)
+        cls.__mpsiemworker = MPSIEMWorker(cls.__creds, cls.__settings)
         cls.__module = cls.__mpsiemworker.get_module(ModuleNames.KB)
 
     @classmethod
@@ -191,6 +198,151 @@ class KBTestCase(unittest.TestCase):
                                                           rule_id).get("state") == "running"
 
         self.assertTrue(is_stopped and is_running)
+
+    def test_create_root_folder(self):
+        db_name = self.__choose_deployable_db()
+        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
+        try:
+            folder_id = UUID(new_folder_id_str)
+        except ValueError:
+            folder_id = 'Bad value'
+
+        self.assertEqual(new_folder_id_str, str(folder_id))
+
+    def test_delete_folder(self):
+        db_name = self.__choose_deployable_db()
+        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
+
+        retval = self.__module.delete_folder(db_name, new_folder_id_str)
+        self.assertEqual(204, retval.status_code)
+
+    def test_create_co_rule(self):
+        db_name = self.__choose_deployable_db()
+        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
+
+        rule_name = (''.join(choice(ascii_lowercase) for i in range(20)))  # случайное имя
+        code = self.__test_co_rule
+
+        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str)
+
+        try:
+            rule_id = UUID(new_rule_id_str)
+        except ValueError:
+            rule_id = 'Bad value'
+
+        self.assertEqual(new_rule_id_str, str(rule_id))
+
+    def test_create_co_rule_with_group(self):
+        db_name = self.__choose_deployable_db()
+        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
+
+        rule_name = (''.join(choice(ascii_lowercase) for i in range(20)))  # случайное имя
+        code = self.__test_co_rule
+
+        group_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        new_group_id_str = self.__module.create_group(db_name, group_name)
+
+        groups = [new_group_id_str, ]
+
+        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str,
+                                                       group_ids=groups)
+
+        try:
+            rule_id = UUID(new_rule_id_str)
+        except ValueError:
+            rule_id = 'Bad value'
+
+        self.assertEqual(new_rule_id_str, str(rule_id))
+
+    def test_delete_co_rule(self):
+        db_name = self.__choose_deployable_db()
+        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
+
+        rule_name = (''.join(choice(ascii_lowercase) for i in range(20)))  # случайное имя
+        code = self.__test_co_rule
+
+        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str)
+
+        retval = self.__module.delete_co_rule(db_name, new_rule_id_str)
+
+        self.assertEqual(204, retval.status_code)
+
+    def test_create_root_group(self):
+        db_name = self.__choose_deployable_db()
+        group_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        new_group_id_str = self.__module.create_group(db_name, group_name)
+
+        try:
+            group_id = UUID(new_group_id_str)
+        except ValueError:
+            group_id = 'Bad value'
+
+        self.assertEqual(new_group_id_str, str(group_id))
+
+    def test_delete_group(self):
+        db_name = self.__choose_deployable_db()
+        group_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        new_group_id_str = self.__module.create_group(db_name, group_name)
+
+        retval = self.__module.delete_group(db_name, new_group_id_str)
+
+        self.assertEqual(204, retval.status_code)
+
+    def test_export_group_kb_format(self):
+        db_name = self.__choose_deployable_db()
+        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
+
+        rule_name = (''.join(choice(ascii_lowercase) for i in range(20)))  # случайное имя
+        code = self.__test_co_rule
+
+        group_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        new_group_id_str = self.__module.create_group(db_name, group_name)
+
+        groups = [new_group_id_str, ]
+
+        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str,
+                                                       group_ids=groups)
+
+        filename = (''.join(choice(ascii_lowercase) for i in range(12))) + '.kb'
+        with TemporaryDirectory() as tmpdirname:
+            filepath = os.path.join(tmpdirname, filename)
+
+            bytes = self.__module.export_group(db_name, new_group_id_str, filepath)
+            self.assertGreater(bytes, 0)
+
+    def test_export_group_siem_format(self):
+        db_name = self.__choose_deployable_db()
+        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
+
+        rule_name = (''.join(choice(ascii_lowercase) for i in range(20)))  # случайное имя
+        code = self.__test_co_rule
+
+        group_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        new_group_id_str = self.__module.create_group(db_name, group_name)
+
+        groups = [new_group_id_str, ]
+
+        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str,
+                                                       group_ids=groups)
+
+        filename = (''.join(choice(ascii_lowercase) for i in range(12))) + '.zip'
+        with TemporaryDirectory() as tmpdirname:
+            filepath = os.path.join(tmpdirname, filename)
+            bytes = self.__module.export_group(db_name, new_group_id_str, filepath,
+                                               export_format=self.__module.EXPORT_FORMAT_SIEM_LITE)
+            self.assertGreater(bytes, 0)
+
+    def test_import_group_add_and_update(self):
+        db_name = self.__choose_deployable_db()
+        status_code = self.__module.import_group(db_name, 'test.kb')
+        self.assertEqual(status_code, 201)
 
 
 if __name__ == '__main__':

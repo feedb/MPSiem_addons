@@ -6,3 +6,6 @@
 /.tmp.drivedownload/
 main.py
 __pycache__
+/build/
+/*.egg-info/
+/wheel/
