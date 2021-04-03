@@ -1,7 +1,7 @@
 from .MPSIEMAuth import MPSIEMAuth
 from .Interfaces import LoggingHandler, WorkerInterface, ModuleInterface, AuthInterface
 from .Interfaces import AuthType, ModuleNames, MPComponents, Creds, Settings, StorageVersion, MPContentTypes
-from .BaseFuntions import setup_logging, exec_request, get_metrics_took_time, get_metrics_start_time
+from .BaseFunctions import setup_logging, exec_request, get_metrics_took_time, get_metrics_start_time
 
 __all__ = ["setup_logging",
            "exec_request", "get_metrics_took_time", "get_metrics_start_time",

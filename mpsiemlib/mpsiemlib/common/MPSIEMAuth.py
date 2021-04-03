@@ -1,10 +1,10 @@
-import json
 import re
 import html
+import json
 import requests
 
 from .Interfaces import LoggingHandler, AuthType, MPComponents, AuthInterface, Settings, StorageVersion
-from .BaseFuntions import exec_request
+from .BaseFunctions import exec_request
 
 from requests import RequestException
 # TODO: requests.utils.urlparse ?

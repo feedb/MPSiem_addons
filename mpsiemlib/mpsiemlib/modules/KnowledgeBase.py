@@ -16,6 +16,7 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
     __api_root = '/api-studio'
     __api_kb_db_list = f'{__api_root}/content-database-selector/content-databases'
     __api_temp_file_storage_upload = f'{__api_root}/tempFileStorage/upload'
+
     __api_siem = f'{__api_root}/siem'
     __api_deploy_object = f'{__api_siem}/deploy'
     __api_deploy_log = f'{__api_siem}/deploy/log'
@@ -81,7 +82,7 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :param do_remove:
         :return: deploy ID
         """
-        self.log.info('status=prepare, action=install_objects, msg="Try to {} objects {}", '
+        self.log.info('status=prepare, action=install_objects, msg="Try to install {} objects {}", '
                       'hostname="{}", db="{}"'.format("install" if not do_remove else "uninstall",
                                                       guids_list,
                                                       self.__kb_hostname,
@@ -106,6 +107,39 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                                                       guids_list,
                                                       self.__kb_hostname,
                                                       db_name))
+
+        return response.get("Id")
+
+    def install_objects_by_group_id(self, db_name: str, group_id: str) -> str:
+        """
+        Установить объекты из KB в SIEM
+
+        :param db_name: Имя БД
+        :param group_id: ID набора для установки, None для установки всего контента
+        :return: deploy ID
+        """
+        self.log.info('status=prepare, action=install_objects_by_group_id, msg="Try to install group {}", '
+                      'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
+
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+        if group_id is None:
+            params = {"mode": "all"}
+        else:
+            params = {"mode": "group", "groupId": group_id}
+        url = "https://{}:{}{}".format(self.__kb_hostname,
+                                       self.__kb_port,
+                                       self.__api_deploy_object)
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='POST',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers,
+                         json=params)
+        response = r.json()
+
+        self.log.info('status=success, action=install_objects_by_group_id, msg="Install group {}", '
+                      'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
 
         return response.get("Id")
 
@@ -480,7 +514,7 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :return: {"param1": "value1", "param2": "value2"}
         """
         self.log.info('status=prepare, action=get_all_objects, msg="Try to get objects list", '
-                       'hostname="{}", db="{}", filters="{}"'.format(self.__kb_hostname, db_name, filters))
+                      'hostname="{}", db="{}", filters="{}"'.format(self.__kb_hostname, db_name, filters))
 
         url = "https://{}:{}{}".format(self.__kb_hostname, self.__kb_port, self.__api_list_objects)
         headers = {'Content-Database': db_name,
@@ -749,9 +783,9 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :return: ID созданной папки
         """
         params = {
-                    "name": name,
-                    "parentId": parent_id
-                  }
+            "name": name,
+            "parentId": parent_id
+        }
         headers = {'Content-Database': db_name,
                    'Content-Locale': 'RUS'}
         url = "https://{hostname}:{port}{endpoint}".format(hostname=self.__kb_hostname,

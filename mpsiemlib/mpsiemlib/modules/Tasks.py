@@ -71,15 +71,17 @@ class Tasks(ModuleInterface, LoggingHandler):
 
         return run_id
 
-    def get_agents_list(self) -> dict:
+    def get_agents_list(self, do_refresh=False) -> dict:
         """
         Получить список всех агентов.
         Есть еще одно API в HealthMonitor
 
         :return:
         """
-        if len(self.__agents) != 0:
+        if len(self.__agents) != 0 and not do_refresh:
             return self.__agents
+
+        self.__agents.clear()
 
         url = "https://{}{}".format(self.__core_hostname, self.__api_agents_list)
         r = exec_request(self.__core_session,
@@ -101,15 +103,17 @@ class Tasks(ModuleInterface, LoggingHandler):
 
         return self.__agents
 
-    def get_modules_list(self) -> dict:
+    def get_modules_list(self, do_refresh=False) -> dict:
         """
         Получить список всех доступных модулей.
         Информация урезана.
 
         :return:
         """
-        if len(self.__modules) != 0:
+        if len(self.__modules) != 0 and not do_refresh:
             return self.__modules
+
+        self.__modules.clear()
 
         url = "https://{}{}".format(self.__core_hostname, self.__api_modules_list)
         r = exec_request(self.__core_session,
@@ -128,15 +132,17 @@ class Tasks(ModuleInterface, LoggingHandler):
 
         return self.__modules
 
-    def get_profiles_list(self) -> dict:
+    def get_profiles_list(self, do_refresh=False) -> dict:
         """
         Получить список всех профилей.
         Информация урезана.
 
         :return:
         """
-        if len(self.__profiles) != 0:
+        if len(self.__profiles) != 0 and not do_refresh:
             return self.__profiles
+
+        self.__profiles.clear()
 
         url = "https://{}{}".format(self.__core_hostname, self.__api_profiles_list)
         r = exec_request(self.__core_session,
@@ -161,15 +167,17 @@ class Tasks(ModuleInterface, LoggingHandler):
 
         return self.__profiles
 
-    def get_transports_list(self) -> dict:
+    def get_transports_list(self, do_refresh=False) -> dict:
         """
         Получить список всех транспортов.
         Информация урезана.
 
         :return:
         """
-        if len(self.__transports) != 0:
+        if len(self.__transports) != 0 and not do_refresh:
             return self.__transports
+
+        self.__transports.clear()
 
         url = "https://{}{}".format(self.__core_hostname, self.__api_transports_list)
         r = exec_request(self.__core_session,
@@ -186,15 +194,17 @@ class Tasks(ModuleInterface, LoggingHandler):
 
         return self.__transports
 
-    def get_credentials_list(self) -> dict:
+    def get_credentials_list(self, do_refresh=False) -> dict:
         """
         Получить список всех учетных записей для подключения к источникам.
         Информация урезана.
 
         :return:
         """
-        if len(self.__credentials) != 0:
+        if len(self.__credentials) != 0 and not do_refresh:
             return self.__credentials
+
+        self.__transports.clear()
 
         url = "https://{}{}".format(self.__core_hostname, self.__api_credentials_list)
         r = exec_request(self.__core_session,

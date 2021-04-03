@@ -184,6 +184,22 @@ class KBTestCase(unittest.TestCase):
 
         self.assertTrue(success_install and success_uninstall)
 
+    @unittest.skip("Not Implemented")
+    def test_deploy_group(self):
+        db_name = self.__choose_deployable_db()
+
+        deploy_id = self.__module.install_objects_by_group_id(db_name, "0")
+
+        success_install = False
+        for i in range(30):
+            time.sleep(10)
+            deploy_status = self.__module.get_deploy_status(db_name, deploy_id)
+            if deploy_status.get("deployment_status") == "succeeded":
+                success_install = True
+                break
+
+        self.assertTrue(False)
+
     def test_start_stop_rule(self):
         db_name = self.__choose_deployable_db()
         rule = next(self.__module.get_correlations_list(db_name, filters={"filters": {"DeploymentStatus": ["1"]}}))
@@ -289,7 +305,7 @@ class KBTestCase(unittest.TestCase):
         group_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
         new_group_id_str = self.__module.create_group(db_name, group_name)
 
-        retval = self.__module.delete_group(db_name, new_group_id_str)
+        retval = self.__module.delete_group(db_name)
 
         self.assertEqual(204, retval.status_code)
 

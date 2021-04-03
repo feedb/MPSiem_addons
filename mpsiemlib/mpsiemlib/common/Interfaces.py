@@ -5,15 +5,16 @@ from mpsiemlib.common import MPSIEMAuth
 
 class Settings:
     connection_timeout = 60
-    connection_timeout_x = 6  # коэф. увеличения timeout при генерауии отчета.
+    connection_timeout_x = 6  # коэф. увеличения timeout при генерации отчета.
     storage_events_timezone = "UTC"  # в ES все события приведены к UTC
-    local_timezone = "Europe/Moscow"  # в какой временной зоне работает скрипт
+    local_timezone = "Europe/Moscow"  # в какой временной зоне работает MP
     storage_bucket_size = 33000  # размер бакета агрегации в Elastic (по умолчанию в конфиге 50000)
     storage_batch_size = 10000  # размер выгружаемой пачки событий без агрегации
     tables_batch_size = 1000  # размер выгружаемой пачки записей из табличек
     kb_objects_batch_size = 1000  # размер выгружаемой пачки правил из KB
     incidents_batch_size = 100  # размер выгружаемой пачки инцидентов
     source_monitor_batch_size = 100  # размер выгружаемой пачки источников
+    assets_batch_size = 1000  # размер выгружаемой пачки активов
 
 
 class AuthType:
@@ -24,6 +25,7 @@ class AuthType:
 class ModuleNames:
     AUTH = "auth"
     EVENTS = "events"
+    ASSETS = "assets"
     TABLES = "tables"
     FILTERS = "filters"
     TASKS = "tasks"
@@ -35,7 +37,7 @@ class ModuleNames:
 
     @staticmethod
     def get_modules_list():
-        return [ModuleNames.AUTH, ModuleNames.EVENTS, ModuleNames.TABLES,
+        return [ModuleNames.AUTH, ModuleNames.ASSETS, ModuleNames.EVENTS, ModuleNames.TABLES,
                 ModuleNames.FILTERS, ModuleNames.TASKS, ModuleNames.HEALTH,
                 ModuleNames.URM, ModuleNames.KB, ModuleNames.INCIDENTS, ModuleNames.SOURCE_MONITOR]
 

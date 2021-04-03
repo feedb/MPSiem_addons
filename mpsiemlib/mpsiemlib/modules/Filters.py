@@ -27,6 +27,7 @@ class Filters(ModuleInterface, LoggingHandler):
         """
         if len(self.__folders) != 0:
             return self.__folders
+
         url = "https://{}{}".format(self.__core_hostname, self.__api_filters_list)
 
         r = exec_request(self.__core_session,
