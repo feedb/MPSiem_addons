@@ -1,8 +1,13 @@
+import os
+import yaml
+
 from hashlib import sha256
 from typing import Iterator, Optional
+from tempfile import TemporaryDirectory
 
 from mpsiemlib.common import ModuleInterface, MPSIEMAuth, LoggingHandler, MPComponents, Settings, MPContentTypes
 from mpsiemlib.common import exec_request, get_metrics_start_time, get_metrics_took_time
+from mpsiemlib.helpers import ContentPack, content_folder_to_work_copy, work_copy_to_content_folder
 
 
 class KnowledgeBase(ModuleInterface, LoggingHandler):
@@ -30,6 +35,8 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
     __api_co_rules = f'{__api_siem}/correlation-rules'
     __api_export = f'{__api_siem}/export'
     __api_import = f'{__api_siem}/import'
+    __api_mass_operations = f'{__api_siem}/mass-operations'
+    __api_siem_objgroups_values = f'{__api_mass_operations}/SiemObjectGroup/values'
 
     # обрабатывается в Core
     __api_rule_running_info = "/api/siem/v2/rules/{}/{}"
@@ -325,15 +332,17 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
 
         return ret
 
-    def get_groups_list(self, db_name: str) -> dict:
+    def get_groups_list(self, db_name: str, do_refresh=False) -> dict:
         """
         Получить список групп
 
         :param db_name: Имя БД
+        :param do_refresh: Обновить кэш
         :return: {'group_id': {'parent_id': 'value', 'name': 'value'}}
         """
-        if len(self.__groups) != 0:
+        if not do_refresh and len(self.__groups) != 0:
             return self.__groups
+
         headers = {'Content-Database': db_name,
                    'Content-Locale': 'RUS'}
         url = "https://{}:{}{}".format(self.__kb_hostname, self.__kb_port, self.__api_groups)
@@ -355,14 +364,15 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
 
         return self.__groups
 
-    def get_folders_list(self, db_name: str) -> dict:
+    def get_folders_list(self, db_name: str, do_refresh=False) -> dict:
         """
         Получить список папок
 
         :param db_name: Имя БД
+        :param do_refresh: Обновить кэш
         :return: {'group_id': {'parent_id': 'value', 'name': 'value'}}
         """
-        if len(self.__folders) == 0:
+        if not do_refresh and len(self.__folders) == 0:
             self.__iterate_folders_tree(db_name)
 
         self.log.info('status=success, action=get_folders_list, msg="Got {} folders", '
@@ -370,14 +380,15 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
 
         return self.__folders
 
-    def get_packs_list(self, db_name: str) -> dict:
+    def get_packs_list(self, db_name: str, do_refresh=False) -> dict:
         """
         Получить список паков
 
         :param db_name: Имя БД
+        :param do_refresh: Обновить кэш
         :return: {'group_id': {'parent_id': 'value', 'name': 'value'}}
         """
-        if len(self.__packs) != 0:
+        if not do_refresh and len(self.__packs) != 0:
             self.__iterate_folders_tree(db_name)
 
         self.log.info('status=success, action=get_packs_list, msg="Got {} packs", '
@@ -542,6 +553,8 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                        "guid": i.get("ObjectId"),
                        "name": i.get("SystemName"),
                        "folder_id": i.get("FolderId"),
+                       "object_kind": i.get("ObjectKind"),
+                       "folder_path": i.get("FolderPath").replace('\\','/') if i.get("FolderPath") else "",
                        "origin_id": i.get("OriginId"),
                        "compilation_sdk": i.get("CompilationStatus", {}).get("SdkVersion"),
                        "compilation_status": i.get("CompilationStatus", {}).get("CompilationStatusId"),
@@ -997,8 +1010,120 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
 
         return r
 
+    def is_group_empty(self, db_name: str, group_id: str) -> bool:
+        """
+        Проверить есть ли данные в наборе установки
+
+        :param db_name: имя БД
+        :param group_id: идентификатор набора установки
+        :return: True - если в наборе установки нет контента
+        """
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+
+        params = { "skip" : 0,
+                   "folderId" : None,
+                   "filters" : None,
+                   "search":"",
+                   "sort":[
+                       {"name":"objectId","order":0,"type":0}
+                   ],
+                   "recursive" : True,
+                   "groupId":group_id,
+                   "withoutGroups" : False,
+                   "take":50
+                   }
+
+        url = "https://{hostname}:{port}{endpoint}".format(hostname=self.__kb_hostname,
+                                                                    port=self.__kb_port,
+                                                                    endpoint=self.__api_list_objects
+                                                                    )
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='POST',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers,
+                         json=params)
+
+        if r.status_code == 201:
+
+            num_rows = r.json().get('Count', 0)
+
+            self.log.info('status=success, action=list_group, msg="group {} has {} rows", '
+                          'hostname="{}", db="{}"'.format(group_id, num_rows, self.__kb_hostname, db_name))
+
+            return True if num_rows == 0 else False
+
+        else:
+            self.log.error('status=failed, action=list_group, msg="failed to list group {}", '
+                           'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
+
+    def get_group_path_by_id(self, db_name: str, folder_id: str) -> str:
+        """
+        Получить путь в дереве наборов установки по идентификатору набора установки
+
+        :param db_name: Имя БД
+        :param folder_id: идентификатор набора установки
+        :return: путь в дереве наборов установки вида root/child/grandchild
+        """
+        if not self.__groups:
+            groups = self.get_groups_list(db_name)
+        else:
+            groups = self.__groups
+        parent = groups[folder_id]['parent_id']
+        name = groups[folder_id]['name']
+        ret_path = self.get_group_path_by_id(db_name, parent) if parent else ''
+        return '/'.join((ret_path, name)) if ret_path else name
+
+    def get_group_id_by_path(self, db_name: str, search_path: str) -> str:
+        """
+        Получить идентификатор набора установки по пути в дереве
+
+        :param db_name: Имя БД
+        :param path: Путь в формате root/child/grandchild
+        :return: идентификатор набора установки
+        """
+        groups = self.get_groups_list(db_name)
+        path_index = {}
+        for current_id, group_data in groups.items():
+            path = self.get_group_path_by_id(db_name, current_id)
+            path_index[path] = current_id
+
+        return path_index.get(search_path, '')
+
+    def __get_group_children_tree(self, groups, current_id) -> list:
+        children = groups[current_id]['children_ids'] if 'children_ids' in groups[current_id] else []
+        retval = list(children)
+        for child in children:
+            grand_children = self.__get_group_children_tree(groups, child)
+            retval.extend(grand_children)
+
+        return retval
+
+    def get_nested_group_ids(self, db_name: str, group_id: str) -> list:
+        """
+        Получить идентификаторы дочерних наборов установки
+
+        :param db_name: Имя БД
+        :param group_id: идентификатор группы
+        :return: список идентификаторов дочерних наборов установки
+        """
+        groups = dict(self.get_groups_list(db_name))
+        for current_id, group_data in groups.items():
+            parent_id = group_data['parent_id']
+            if parent_id:
+                if 'children_ids' not in groups[parent_id]:
+                    groups[parent_id]['children_ids'] = []
+
+                groups[parent_id]['children_ids'].append(current_id)
+
+        return self.__get_group_children_tree(groups, group_id)
+
     def export_group(self, db_name: str, group_id: str, local_filepath: str,
-                     export_format: Optional[str] = EXPORT_FORMAT_KB) -> int:
+                     export_format: Optional[str] = EXPORT_FORMAT_KB,
+                     metadata_filepath: str = '',
+                     group_relative_root: str = '') -> int:
         """
         Экспортировать набор установки
 
@@ -1006,6 +1131,9 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :param group_id: ID набора установки
         :param local_filepath: файл в который сохранить набор установки
         :param export_format: формат экспорта (KB / SIEM Lite)
+        :metadata_filepath: имя файла для сохранения метаданных (по умолчанию не сохраняются).
+                            В метаданных сохраняется путь для экспорта
+        :metadata_relative_root: путь, который считать корневым при экспорте дерева наборов установки
         :return: размер созданного файла
         """
 
@@ -1034,29 +1162,136 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         retval = 0
         if r.status_code == 201:
 
-            with open(local_filepath, 'wb') as kbfile:
-                retval = kbfile.write(r.content)
+            # Не экспортировать пустой пак (в него попадают все ПТшные макросы)
+            is_group_empty = self.is_group_empty(db_name, group_id)
+            if not is_group_empty:
+                with open(local_filepath, 'wb') as kbfile:
+                    retval = kbfile.write(r.content)
 
             self.log.info('status=success, action=export_group, msg="group {} exported", '
                           'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
+
+            if metadata_filepath:
+                # Формирование метаданных
+
+                absolute_path = self.get_group_path_by_id(db_name, group_id)
+                if absolute_path.startswith(group_relative_root):
+                    relative_path = os.path.relpath(absolute_path, group_relative_root).replace(os.sep, '/')
+                else:
+                    relative_path = absolute_path
+
+                metadata = {
+                    'group_path': relative_path,
+                }
+
+                # Добавить ссылки на контент в метаданные
+                if not is_group_empty:
+                    pack = ContentPack(local_filepath)
+                    metadata['kb_tree'] = pack.get_content_links()
+
+                with open(metadata_filepath, 'wt', encoding='utf-8') as meta_file:
+                    yaml.safe_dump(
+                        metadata,
+                        meta_file,
+                        allow_unicode = True
+                    )
         else:
             self.log.error('status=failed, action=export_group, msg="failed to export group {}", '
                            'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
 
         return retval
 
-    def import_group(self, db_name: str, filename: str, mode: Optional[str] = IMPORT_ADD_AND_UPDATE) -> int:
+    def export_groups(self, db_name: str, group_paths: list, folder: str,
+                      recursive: bool = True,
+                      export_metadata: bool = True,
+                      group_relative_root: str = ''
+                      ):
+        """
+        Выгрузить наборы установки с метаданными
+
+        :param db_name: Имя БД
+        :param group_paths: Список путей в дереве наборов установки
+        :param folder: Каталог для выгрузки
+        :param recursive: Выгружать дочерние элементы дерева наборов установки
+        :param export_metadata: Выгружать метаданные по набору установки
+        :param group_relative_root: Узел в дереве наборов установки, который будет считаться корневым
+        :return:
+        """
+        SPECIAL_CHARS = ['<', '>', ':', '"', '*', '|', '?']
+
+        for group_path in group_paths:
+            group_id_current = self.get_group_id_by_path(db_name, group_path)
+            group_ids_total = [group_id_current, ]
+            if recursive:
+                group_ids_total.extend(self.get_nested_group_ids(db_name, group_id_current))
+
+            for group_id in group_ids_total:
+                group_path = self.get_group_path_by_id(db_name, group_id)
+
+                if group_path.startswith(group_relative_root):
+                    group_path = os.path.relpath(group_path, group_relative_root).replace(os.sep, '/')
+
+                filename = '_'.join(group_path.split('/'))
+                pack_filename = filename + '.kb'
+                for char in SPECIAL_CHARS:
+                    pack_filename = pack_filename.replace(char, '_')
+
+                if export_metadata:
+                    meta_filename = filename + '.yaml'
+                    for char in SPECIAL_CHARS:
+                        meta_filename= meta_filename.replace(char, '_')
+                    metadata_filepath = os.path.join(folder, meta_filename)
+                else:
+                    metadata_filepath = ''
+
+                self.export_group(db_name,
+                                  group_id,
+                                  os.path.join(folder, pack_filename),
+                                  metadata_filepath=metadata_filepath,
+                                  group_relative_root=group_relative_root
+                                  )
+
+
+    def export_groups_unpacked(self, db_name: str, group_paths: list, folder: str,
+                      recursive: bool = True,
+                      export_metadata: bool = True,
+                      group_relative_root: str = ''):
+        """
+        Экспорт наборов установки в структуру рабочей копии
+
+        :param db_name: имя БД
+        :param group_paths: пути для экспорта
+        :param folder: каталог рабочей копии
+        :param recursive: выгружать дерево наборов устновки
+        :param export_metadata: экспортировать метаданные по наборам установки
+        :param group_relative_root: относительный путь в дереве наборов установки
+        :return:
+        """
+
+        if not os.path.isdir(folder):
+            os.mkdir(folder)
+
+        with TemporaryDirectory() as tmp_dir:
+            self.export_groups(db_name, group_paths, tmp_dir, recursive, export_metadata, group_relative_root)
+            content_folder_to_work_copy(tmp_dir, folder)
+
+
+
+    def import_group(self, db_name: str, filepath: str, mode: Optional[str] = IMPORT_ADD_AND_UPDATE) -> int:
         """
         Импортировать набор установки
 
         :param db_name: имя БД
-        :param filename: имя файла набора установки
+        :param filepath: имя файла набора установки
         :param mode: режим импорта
         :return: response_code
         """
         headers = {'Content-Database': db_name,
                    'Content-Locale': 'RUS',
                    'Content-Type': 'application/octet-stream'}
+
+
+        filename = os.path.basename(filepath)
 
         url = "https://{hostname}:{port}{endpoint}?fileName={filename}&storageType=Temp".format(
             hostname=self.__kb_hostname,
@@ -1066,7 +1301,7 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         )
 
         uploaded_id = ""
-        with open(filename, 'rb') as kbfile:
+        with open(filepath, 'rb') as kbfile:
 
             r = exec_request(self.__kb_session,
                              url,
@@ -1080,10 +1315,10 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                 # Upload successful
                 uploaded_id = r.json().get('UploadId')
                 self.log.info('status=success, action=upload_file, msg="file {} uploaded", '
-                              'hostname="{}", db="{}"'.format(filename, self.__kb_hostname, db_name))
+                              'hostname="{}", db="{}"'.format(filepath, self.__kb_hostname, db_name))
             else:
                 self.log.error('status=failed, action=upload_file, msg="failed to upload file {}", '
-                               'hostname="{}", db="{}"'.format(filename, self.__kb_hostname, db_name))
+                               'hostname="{}", db="{}"'.format(filepath, self.__kb_hostname, db_name))
 
         if uploaded_id:
             # make import
@@ -1114,14 +1349,217 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
             if r.status_code == 201:
                 # Upload successful
                 self.log.info('status=success, action=import_file, msg="file {} imported", '
-                              'hostname="{}", db="{}"'.format(filename, self.__kb_hostname, db_name))
+                              'hostname="{}", db="{}"'.format(filepath, self.__kb_hostname, db_name))
             else:
                 self.log.error('status=failed, action=import_file, msg="failed to import file {}", '
-                               'hostname="{}", db="{}"'.format(filename, self.__kb_hostname, db_name))
+                               'hostname="{}", db="{}"'.format(filepath, self.__kb_hostname, db_name))
 
             return r.status_code
         else:
             return -1
+
+    def create_group_path(self, db_name: str, group_path: str) -> str:
+        """
+        Последовательное создание пути в дереве наборов установки
+
+        :param db_name: Имя БД
+        :param group_path: путь в дереве наборов установки
+        :return: идентификатор листьевого набора установки
+        """
+        path_parts = group_path.split('/')
+        for i in range(1, len(path_parts)+1):
+            parent_path = '/'.join(path_parts[0:i-1])
+            path = '/'.join(path_parts[0:i])
+            group_id = self.get_group_id_by_path(db_name, path)
+            if not group_id:
+                parent_group_id = self.get_group_id_by_path(db_name, parent_path) or None
+                self.create_group(db_name, path_parts[i-1], parent_group_id)
+
+        return self.get_group_id_by_path(db_name, group_path)
+
+    def __get_linked_ids(self, objects):
+        """
+        Разбор ответа на запрос привязанных наборов установки
+
+        :param objects: ответ API MPSIEM
+        :return:
+        """
+        linked = []
+        for item in objects:
+            if 'AssignedTo' in item and item['AssignedTo'] == 'All':
+                if 'Id' in item:
+                    linked.append(item['Id'])
+            if 'Children' in item and item['Children']:
+                linked.extend(self.__get_linked_ids(item['Children']))
+
+        return linked
+
+    def get_linked_groups(self, db_name: str, content_item_id: str) -> list:
+        """
+        Получить список идентификаторов связанных наборов установки для элемента контента
+
+        :param db_name: Имя БД
+        :param content_item_id: идентификатор контента
+        :return: список идентификаторов связанных наборов установки
+        """
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+
+        params = {
+                    "include":[content_item_id, ],
+                    "filter": None
+        }
+
+        url = "https://{hostname}:{port}{endpoint}".format(
+            hostname=self.__kb_hostname,
+            port=self.__kb_port,
+            endpoint=self.__api_siem_objgroups_values
+        )
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='POST',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers,
+                         json=params,
+                         )
+
+        if r.status_code == 201:
+
+            group_ids = self.__get_linked_ids(r.json())
+
+            self.log.info('status=success, action=get_linked_groups, msg="Item {} linked to groups {}", '
+                          'hostname="{}", db="{}"'.format(content_item_id, group_ids, self.__kb_hostname, db_name))
+
+            return group_ids
+        else:
+            self.log.error('status=failed, action=get_linked_groups, msg="can not get group links for {}", '
+                           'hostname="{}", db="{}"'.format(content_item_id, self.__kb_hostname, db_name))
+
+    def link_content_to_groups(self, db_name: str, content_items_ids: list, group_ids: list):
+        """
+        Связать идентификаторы контента с идентификаторами наборов установки
+
+        :param db_name: Имя БД
+        :param content_items_ids: идентификаторы контента
+        :param group_ids: идентификаторы наборов устновки
+        :return:
+        """
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+
+        params = {
+            "Operations":[
+                {
+                    "Id":"SiemObjectGroup",
+                    "ValuesToSave": group_ids,
+                    "ValuesToRemove":[]
+                }
+            ],
+            "Entities":{
+                "include": content_items_ids,
+                "filter":{}
+            }
+        }
+
+        url = "https://{hostname}:{port}{endpoint}".format(
+            hostname=self.__kb_hostname,
+            port=self.__kb_port,
+            endpoint=self.__api_mass_operations
+        )
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='PUT',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers,
+                         json=params,
+                         )
+
+        if r.status_code == 200:
+            self.log.info('status=success, action=link_content_to_groups, msg="{} linked to {}", '
+                          'hostname="{}", db="{}"'.format(content_items_ids, group_ids, self.__kb_hostname, db_name))
+        else:
+            self.log.error('status=failed, action=import_file, msg="can not link {} to {}", '
+                           'hostname="{}", db="{}"'.format(content_items_ids, group_ids, self.__kb_hostname, db_name))
+
+    def __process_kb_metadata(self, db_name, obj_map, kb_meta):
+        if 'group_path' in kb_meta and kb_meta['group_path']:
+            # Создать путь в дереве наборов установки
+            group_id = self.create_group_path(db_name, kb_meta['group_path'])
+
+            # Есть связанные элементы контента
+            if 'kb_tree' in kb_meta and kb_meta['kb_tree']:
+                contend_guid_strs = []
+                for content_type in kb_meta['kb_tree']:
+                    for content_path in kb_meta['kb_tree'][content_type]:
+                        key = (content_type, content_path)
+
+                        # Пробуем найти маппинт (Type, Path)->GUID
+                        if key in obj_map:
+                            contend_guid_strs.append(obj_map[key])
+                        else:
+                            self.log.error('status=failed, action=map_id_to_guid, msg="can not find object {}", '
+                                           'hostname="{}", db="{}"'.format(key, self.__kb_hostname,
+                                                                           db_name))
+
+                if contend_guid_strs:
+                    # Связать контент с набором установки
+                    self.link_content_to_groups(db_name, contend_guid_strs, [group_id, ])
+
+
+    def import_groups(self, db_name: str, folder: str,
+                                                create_groups: bool = True,
+                                                group_relative_root: str = ''):
+        """
+        Импорт всех наборов установки из каталога
+        Опиционально: восстановка дерева наборово установки
+
+        :param db_name: Имя БД
+        :param folder: Каталог с файлами для импорта
+                        *.kb - наборы установки
+                        *.yaml - метаданные по наборам установки
+        :param create_groups: Создавать иерархию наборов установки
+        :param group_relative_root: Набор установки под которым импортировать иерархию наборов установки
+        :return:
+        """
+
+        if os.path.exists(folder):
+            # Импортировать все наборы установки (*.kb)
+            for filename in os.listdir(folder):
+                if filename.endswith('.kb'):
+                    self.import_group(db_name, os.path.join(folder, filename))
+
+            # Создать иерархию наборов установки на основе метаданных (*.yaml)
+            if create_groups:
+                obj_map = {
+                            (item['object_kind'], '/'.join((item['folder_path'], item['name']))): item['id']
+                                                                            for item in self.get_all_objects(db_name)
+                }
+
+                for filename in os.listdir(folder):
+                    if filename.endswith('.yaml'):
+                        with open(os.path.join(folder, filename), 'rt', encoding='utf-8') as kb_meta_file:
+                            self.__process_kb_metadata(db_name, obj_map, yaml.full_load(kb_meta_file))
+
+    def import_groups_unpacked(self, db_name: str, folder: str,
+                                                create_groups: bool = True,
+                                                group_relative_root: str = ''):
+        """
+        Импорт групп из рабочей копии
+
+        :param db_name: имя БД
+        :param folder: каталог с рабочей копией
+        :param create_groups: создавать наборы установки в SIEM
+        :param group_relative_root: относительный путь под которым создавать наборы установки
+        :return:
+        """
+        if os.path.isdir(folder):
+            with TemporaryDirectory() as tmp_dir:
+                work_copy_to_content_folder(folder, tmp_dir)
+                print(os.listdir(tmp_dir))
+                self.import_groups(db_name, tmp_dir, create_groups, group_relative_root)
+
 
     def close(self):
         if self.__kb_session is not None:

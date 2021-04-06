@@ -6,10 +6,10 @@ from mpsiemlib.common import *
 from mpsiemlib.modules import MPSIEMWorker
 
 from tests.settings import creds, settings
-from random import choice
-from string import ascii_uppercase, ascii_lowercase
+
 from uuid import UUID
 from tempfile import TemporaryDirectory
+from tests.helpers import gen_lowercase_string, gen_uppercase_string
 
 
 class KBTestCase(unittest.TestCase):
@@ -217,7 +217,7 @@ class KBTestCase(unittest.TestCase):
 
     def test_create_root_folder(self):
         db_name = self.__choose_deployable_db()
-        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        folder_name = gen_uppercase_string(12)  # случайное имя
         new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
         try:
             folder_id = UUID(new_folder_id_str)
@@ -228,7 +228,7 @@ class KBTestCase(unittest.TestCase):
 
     def test_delete_folder(self):
         db_name = self.__choose_deployable_db()
-        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        folder_name = gen_uppercase_string(12)  # случайное имя
         new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
 
         retval = self.__module.delete_folder(db_name, new_folder_id_str)
@@ -236,10 +236,10 @@ class KBTestCase(unittest.TestCase):
 
     def test_create_co_rule(self):
         db_name = self.__choose_deployable_db()
-        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        folder_name = gen_uppercase_string(12)  # случайное имя
         new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
 
-        rule_name = (''.join(choice(ascii_lowercase) for i in range(20)))  # случайное имя
+        rule_name = gen_lowercase_string(20)  # случайное имя
         code = self.__test_co_rule
 
         new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str)
@@ -253,13 +253,13 @@ class KBTestCase(unittest.TestCase):
 
     def test_create_co_rule_with_group(self):
         db_name = self.__choose_deployable_db()
-        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        folder_name = gen_uppercase_string(12)  # случайное имя
         new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
 
-        rule_name = (''.join(choice(ascii_lowercase) for i in range(20)))  # случайное имя
+        rule_name = gen_lowercase_string(20)  # случайное имя
         code = self.__test_co_rule
 
-        group_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        group_name = gen_uppercase_string(12)  # случайное имя
         new_group_id_str = self.__module.create_group(db_name, group_name)
 
         groups = [new_group_id_str, ]
@@ -276,10 +276,10 @@ class KBTestCase(unittest.TestCase):
 
     def test_delete_co_rule(self):
         db_name = self.__choose_deployable_db()
-        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        folder_name = gen_uppercase_string(12)  # случайное имя
         new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
 
-        rule_name = (''.join(choice(ascii_lowercase) for i in range(20)))  # случайное имя
+        rule_name = gen_lowercase_string(20)  # случайное имя
         code = self.__test_co_rule
 
         new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str)
@@ -290,7 +290,7 @@ class KBTestCase(unittest.TestCase):
 
     def test_create_root_group(self):
         db_name = self.__choose_deployable_db()
-        group_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        group_name = gen_uppercase_string(12)  # случайное имя
         new_group_id_str = self.__module.create_group(db_name, group_name)
 
         try:
@@ -302,22 +302,32 @@ class KBTestCase(unittest.TestCase):
 
     def test_delete_group(self):
         db_name = self.__choose_deployable_db()
-        group_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        group_name = gen_uppercase_string(12)  # случайное имя
         new_group_id_str = self.__module.create_group(db_name, group_name)
 
-        retval = self.__module.delete_group(db_name)
+        retval = self.__module.delete_group(db_name, new_group_id_str)
 
         self.assertEqual(204, retval.status_code)
 
+    def test_is_group_empty(self):
+        db_name = self.__choose_deployable_db()
+
+        group_name = gen_uppercase_string(12)  # случайное имя
+        new_group_id_str = self.__module.create_group(db_name, group_name)
+
+        self.assertTrue(
+            self.__module.is_group_empty(db_name, new_group_id_str)
+        )
+
     def test_export_group_kb_format(self):
         db_name = self.__choose_deployable_db()
-        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        folder_name = gen_uppercase_string(12)  # случайное имя
         new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
 
-        rule_name = (''.join(choice(ascii_lowercase) for i in range(20)))  # случайное имя
+        rule_name = gen_lowercase_string(20)  # случайное имя
         code = self.__test_co_rule
 
-        group_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        group_name = gen_uppercase_string(12)  # случайное имя
         new_group_id_str = self.__module.create_group(db_name, group_name)
 
         groups = [new_group_id_str, ]
@@ -325,7 +335,7 @@ class KBTestCase(unittest.TestCase):
         new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str,
                                                        group_ids=groups)
 
-        filename = (''.join(choice(ascii_lowercase) for i in range(12))) + '.kb'
+        filename = gen_lowercase_string(20) + '.kb'
         with TemporaryDirectory() as tmpdirname:
             filepath = os.path.join(tmpdirname, filename)
 
@@ -334,13 +344,13 @@ class KBTestCase(unittest.TestCase):
 
     def test_export_group_siem_format(self):
         db_name = self.__choose_deployable_db()
-        folder_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        folder_name = gen_uppercase_string(12)  # случайное имя
         new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
 
-        rule_name = (''.join(choice(ascii_lowercase) for i in range(20)))  # случайное имя
+        rule_name = gen_lowercase_string(20)  # случайное имя
         code = self.__test_co_rule
 
-        group_name = (''.join(choice(ascii_uppercase) for i in range(12)))  # случайное имя
+        group_name = gen_uppercase_string(12)  # случайное имя
         new_group_id_str = self.__module.create_group(db_name, group_name)
 
         groups = [new_group_id_str, ]
@@ -348,17 +358,154 @@ class KBTestCase(unittest.TestCase):
         new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str,
                                                        group_ids=groups)
 
-        filename = (''.join(choice(ascii_lowercase) for i in range(12))) + '.zip'
+        filename = gen_lowercase_string(20) + '.zip'
         with TemporaryDirectory() as tmpdirname:
             filepath = os.path.join(tmpdirname, filename)
             bytes = self.__module.export_group(db_name, new_group_id_str, filepath,
                                                export_format=self.__module.EXPORT_FORMAT_SIEM_LITE)
             self.assertGreater(bytes, 0)
 
+    def test_export_groups(self):
+        db_name = self.__choose_deployable_db()
+
+        folder_name = gen_uppercase_string(12)  # случайное имя
+        new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
+
+        rule_name = gen_lowercase_string(20)  # случайное имя
+        code = self.__test_co_rule
+
+        root_group_name = gen_uppercase_string(12)  # случайное имя
+        root_group_id_str = self.__module.create_group(db_name, root_group_name)
+
+        child_group_name = gen_uppercase_string(12)  # случайное имя
+        child_group_id_str = self.__module.create_group(db_name, child_group_name, root_group_id_str)
+
+        groups = [child_group_id_str, ]
+
+        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str,
+                                                       group_ids=groups)
+
+        with TemporaryDirectory() as tmpdirname:
+            self.__module.export_groups(
+                db_name,
+                [root_group_name, ],
+                tmpdirname,
+                recursive=True,
+                export_metadata=True,
+                group_relative_root=''
+            )
+
+            print(tmpdirname)
+            print(os.listdir(tmpdirname))
+
+            print(os.path.join(tmpdirname, root_group_name + '.yaml'))
+            self.assertTrue(os.path.exists(os.path.join(tmpdirname, root_group_name + '.yaml')))
+
+            child_path = '_'.join((root_group_name, child_group_name))
+            print(os.path.join(tmpdirname, child_path + '.yaml'))
+            self.assertTrue(os.path.exists(os.path.join(tmpdirname, child_path + '.yaml')))
+            print(os.path.join(tmpdirname, child_path + '.kb'))
+            self.assertTrue(os.path.exists(os.path.join(tmpdirname, child_path + '.kb')))
+
+    def test_create_group_path(self):
+        db_name = self.__choose_deployable_db()
+
+        root_group_name = gen_uppercase_string(12)
+        child_group_name = gen_uppercase_string(12)
+        grandchild_group_name = gen_uppercase_string(12)
+
+        path = '/'.join((root_group_name, child_group_name, grandchild_group_name))
+
+        self.__module.create_group_path(db_name, path)
+        group_id = self.__module.get_group_id_by_path(db_name, path)
+
+        self.assertNotEqual(group_id, '')
+
     def test_import_group_add_and_update(self):
         db_name = self.__choose_deployable_db()
         status_code = self.__module.import_group(db_name, 'test.kb')
         self.assertEqual(status_code, 201)
+
+    def test_get_group_path_by_id(self):
+        db_name = self.__choose_deployable_db()
+
+        root_group_name = gen_uppercase_string(12)
+        root_group_id_str = self.__module.create_group(db_name, root_group_name)
+
+        child_group_name = gen_uppercase_string(12)
+        child_group_id_str = self.__module.create_group(db_name, child_group_name, root_group_id_str)
+
+        self.assertEqual(
+                            self.__module.get_group_path_by_id(db_name, child_group_id_str),
+                            '/'.join((root_group_name, child_group_name))
+                        )
+
+
+    def test_get_group_id_by_path(self):
+        db_name = self.__choose_deployable_db()
+        folder_name = gen_uppercase_string(12)  # случайное имя
+        new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
+
+        rule_name = gen_lowercase_string(20)  # случайное имя
+        code = self.__test_co_rule
+
+        group_name = gen_uppercase_string(12)  # случайное имя
+        group_id_str = self.__module.create_group(db_name, group_name)
+
+        nested_group_name = gen_uppercase_string(12)
+        nested_group_id_str = self.__module.create_group(db_name, nested_group_name, group_id_str)
+
+        groups = [nested_group_id_str, ]
+
+        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str,
+                                                       group_ids=groups)
+
+        search_str = '/'.join((group_name, nested_group_name))
+        self.assertEqual(self.__module.get_group_id_by_path(db_name, search_str), nested_group_id_str)
+
+    def test_get_nested_group_ids(self):
+        db_name = self.__choose_deployable_db()
+
+        root_group_name = gen_uppercase_string(12)
+        root_group_id_str = self.__module.create_group(db_name, root_group_name)
+
+        child_group_name = gen_uppercase_string(12)
+        child_group_id_str = self.__module.create_group(db_name, child_group_name, root_group_id_str)
+
+        grandchild_group_name = gen_uppercase_string(12)
+        grandchild_group_id_str = self.__module.create_group(db_name, grandchild_group_name, child_group_id_str)
+
+
+        self.assertListEqual(self.__module.get_nested_group_ids(db_name, root_group_id_str),
+                             [child_group_id_str, grandchild_group_id_str])
+
+    def test_link_content_to_groups(self):
+        db_name = self.__choose_deployable_db()
+
+        root_group_name = gen_uppercase_string(12)
+        root_group_id_str = self.__module.create_group(db_name, root_group_name)
+
+        child_group_name = gen_uppercase_string(12)
+        child_group_id_str = self.__module.create_group(db_name, child_group_name, root_group_id_str)
+
+        second_group_name = gen_uppercase_string(12)
+        second_group_id_str = self.__module.create_group(db_name, second_group_name)
+
+        folder_name = gen_uppercase_string(12)  # случайное имя
+        new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
+
+        rule_name = gen_lowercase_string(20)  # случайное имя
+        code = self.__test_co_rule
+        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str)
+
+        self.__module.link_content_to_groups(db_name,
+                                             [new_rule_id_str, ],
+                                             [child_group_id_str, second_group_id_str]
+                                             )
+
+        group_ids = self.__module.get_linked_groups(db_name, new_rule_id_str)
+
+        self.assertCountEqual(group_ids, [child_group_id_str, second_group_id_str])
 
 
 if __name__ == '__main__':

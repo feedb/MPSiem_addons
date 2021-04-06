@@ -1,19 +1,18 @@
 """
 Доп функции и обертки над методами SDK
 """
-import csv
 import io
-import json
+import csv
+import pytz
+
 from datetime import datetime
 from typing import List, Iterator
 
-import pytz
-
-from mpsiemlib import MPSIEMWorker
 from mpsiemlib.common import ModuleNames
+from .content_helpers import *
 
 
-def set_jsons_to_table(worker: MPSIEMWorker, table_name: str, jsons_list: Iterator[str]):
+def set_jsons_to_table(worker, table_name: str, jsons_list: Iterator[str]):
     tables_upload_batch_size = 1000
 
     sdk_module = worker.get_module(ModuleNames.TABLES)
