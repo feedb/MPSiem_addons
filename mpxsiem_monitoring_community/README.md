@@ -22,7 +22,7 @@
        1.   Распаковываем файлы агента в папку, например C:\telegraf
        2.   Заменяем предварительно настроенный конфиг telegraf.conf из данного репозитория
        3.   Выполняем установку и запуск сервиса:
-            *  `"C:\telegraf\telegraf.exe" --config "C:\telegraf\telegraf.conf" --service install`
+            *  `"C:\telegraf\telegraf.exe" --config "C:\telegraf\telegraf.conf" --service install --config-directory C:\telegraf\telegraf.d`
             *  `sc config telegraf start= delayed-auto`
             *  `sc start telegraf`
        4.   Копируем папки: telegraf.d и scripts с файлами из проекта, в папку C:\telegraf
