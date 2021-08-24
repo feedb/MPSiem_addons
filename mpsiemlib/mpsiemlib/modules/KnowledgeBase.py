@@ -1,5 +1,7 @@
+# Add some code
 import os
 import yaml
+import time
 
 from hashlib import sha256
 from typing import Iterator, Optional
@@ -7,7 +9,6 @@ from tempfile import TemporaryDirectory
 
 from mpsiemlib.common import ModuleInterface, MPSIEMAuth, LoggingHandler, MPComponents, Settings, MPContentTypes
 from mpsiemlib.common import exec_request, get_metrics_start_time, get_metrics_took_time
-from mpsiemlib.helpers import ContentPack, content_folder_to_work_copy, work_copy_to_content_folder
 
 
 class KnowledgeBase(ModuleInterface, LoggingHandler):
@@ -30,8 +31,9 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
     __api_table_info = f'{__api_siem}' + '/tabular-lists/{}'
     __api_table_rows = f'{__api_siem}' + '/tabular-lists/{}/rows'
     __api_groups = f'{__api_siem}/groups'
-    __api_folders_packs_list = f'{__api_siem}/folders/tree?includeObjects=true'
+    __api_folders_packs_list = f'{__api_siem}/folders/tree?includeObjects=false'
     __api_folders = f'{__api_siem}/folders'
+    __api_folders_children = f'{__api_folders}' + '/{}/children?includeObjects=false'
     __api_co_rules = f'{__api_siem}/correlation-rules'
     __api_export = f'{__api_siem}/export'
     __api_import = f'{__api_siem}/import'
@@ -69,6 +71,24 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
     # а объекты, которых нет в файле, будут удалены из системы.
     IMPORT_SYNC_SYSTEM = 'replace_origin'
 
+    # Маппинг типа контента в часть url для запросов
+    ITEM_TYPE_MAP = {
+        "CorrelationRule": "correlation-rules",
+        "AggregationRule": "aggregation-rules",
+        "EnrichmentRule": "enrichment-rules",
+        "NormalizationRule": "normalization-rules",
+        "TabularList": "tabular-lists",
+    }
+
+    # Статусы установки в SIEM для контента
+    DEPLOYMENT_STATUS_INSTALLED = 'Installed'
+    DEPLOYMENT_STATUS_NOT_INSTALLED = 'NotInstalled'
+
+    # Таймаут операций установки/удаления контента из SIEM
+    DEPLOYMENT_TIMEOUT = 10
+    # Попытки проверки статуса при неизменном проценте
+    DEPLOYMENT_RETRIES = 10
+
     def __init__(self, auth: MPSIEMAuth, settings: Settings):
         ModuleInterface.__init__(self, auth, settings)
         LoggingHandler.__init__(self)
@@ -89,7 +109,7 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :param do_remove:
         :return: deploy ID
         """
-        self.log.info('status=prepare, action=install_objects, msg="Try to install {} objects {}", '
+        self.log.info('status=prepare, action=install_objects, msg="Try to {} objects {}", '
                       'hostname="{}", db="{}"'.format("install" if not do_remove else "uninstall",
                                                       guids_list,
                                                       self.__kb_hostname,
@@ -150,7 +170,7 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
 
         return response.get("Id")
 
-    def uninstall_object(self, db_name: str, guids_list: list) -> str:
+    def uninstall_objects(self, db_name: str, guids_list: list) -> str:
         """
         Удалить объекты из SIEM
 
@@ -160,6 +180,50 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         """
 
         return self.install_objects(db_name, guids_list, do_remove=True)
+
+    def install_objects_sync(self, db_name: str, guids_list: list,
+                                                    do_remove=False,
+                                                    timeout: int = DEPLOYMENT_TIMEOUT,
+                                                    max_retries: int = DEPLOYMENT_RETRIES):
+        """
+        Синхронный вариант инсталляции/деинсталляции контента из SIEM
+
+        :param db_name: имя БД
+        :param guids_list: список ID элементов контента
+        :param do_remove: False - инсталляция контента, True - деинсталляция контента
+        :param timeout: таймаут между попытками провеки статуса установки
+        :param max_retries: максимальное коилчество попыток проверки статуса установки.
+                            Если процент установки меняется - счетчик сбрасывается
+        :return:
+        """
+
+        operation = 'Uninstall' if do_remove else 'Install'
+
+        deploy_id = self.install_objects(db_name, guids_list, do_remove)
+        retries = max_retries
+        last_percentage = 0
+        while retries > 0:
+            time.sleep(timeout)
+            status = self.get_deploy_status(db_name, deploy_id)
+            deployment_status = status.get('deployment_status')
+            if deployment_status == 'succeeded':
+                self.log.info(
+                    'status=success, action=install_objects_sync, msg="{} succeed", '
+                    'hostname="{}", db="{}"'.format(operation, self.__kb_hostname, db_name))
+                break
+            elif deployment_status == 'running':
+                percentage = int(status.get('percentage'))
+                if percentage > last_percentage:
+                    retries = max_retries
+                else:
+                    retries -= 1
+            else:
+                erros = status.get('errors')
+                self.log.error(
+                    'status=failure, action=install_objects_sync, msg="{} failed. Errors: {}", '
+                    'hostname="{}", db="{}"'.format(operation, erros, self.__kb_hostname, db_name))
+                break
+
 
     def get_deploy_status(self, db_name: str, deploy_id: str) -> dict:
         """
@@ -171,27 +235,31 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         """
         headers = {'Content-Database': db_name,
                    'Content-Locale': 'RUS'}
-        params = {"skip": 0, "take": 100, "deployStatusIds": []}
-        url = "https://{}:{}{}".format(self.__kb_hostname,
-                                       self.__kb_port,
-                                       self.__api_deploy_log)
+
+        url = "https://{}:{}{}/{}".format(self.__kb_hostname,
+                                           self.__kb_port,
+                                           self.__api_deploy_log,
+                                            deploy_id)
         r = exec_request(self.__kb_session,
                          url,
-                         method='POST',
+                         method='GET',
                          timeout=self.settings.connection_timeout,
                          headers=headers,
-                         json=params)
+                         )
         state = r.json()
 
-        ret = {}
-        for i in state:
-            if i.get("Id") != deploy_id:
-                continue
-            ret = {"start_date": i.get("StartDate"),
-                   "deployment_status": i.get("DeployStatusId")}
-        self.log.info('status=success, action=get_deploy_status, msg="Got deploy status", '
-                      'hostname="{}", db="{}", status="{}"'.format(self.__kb_hostname, db_name, ret))
-        return ret
+        deployment_status = state.get('DeployStatusId', '')
+        percentage = str(state.get('Percentage', ''))
+        errors = str(state.get('Errors', ''))
+
+
+        self.log.info('status=success, action=get_deploy_status, msg="Deploy status: {}, percentage: {}%, errors: {}", '
+                      'hostname="{}", db="{}"'.format(deployment_status, percentage, errors, self.__kb_hostname, db_name))
+        return {
+            'deployment_status': deployment_status,
+            'percentage': percentage,
+            'errors': errors
+        }
 
     def start_rule(self, db_name: str, content_type: str, guids_list: list):
         """
@@ -372,11 +440,13 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :param do_refresh: Обновить кэш
         :return: {'group_id': {'parent_id': 'value', 'name': 'value'}}
         """
-        if not do_refresh and len(self.__folders) == 0:
-            self.__iterate_folders_tree(db_name)
+        if do_refresh or len(self.__folders) == 0:
+            self.__folders.clear()
+            self.__packs.clear()
+            self.__get_folder_pack_root_level(db_name)
 
-        self.log.info('status=success, action=get_folders_list, msg="Got {} folders", '
-                      'hostname="{}", db="{}"'.format(len(self.__folders), self.__kb_hostname, db_name))
+            self.log.info('status=success, action=get_folders_list, msg="Got {} folders", '
+                          'hostname="{}", db="{}"'.format(len(self.__folders), self.__kb_hostname, db_name))
 
         return self.__folders
 
@@ -388,15 +458,52 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :param do_refresh: Обновить кэш
         :return: {'group_id': {'parent_id': 'value', 'name': 'value'}}
         """
-        if not do_refresh and len(self.__packs) != 0:
-            self.__iterate_folders_tree(db_name)
+        if do_refresh or len(self.__packs) == 0:
+            self.__get_folder_pack_root_level(db_name)
 
-        self.log.info('status=success, action=get_packs_list, msg="Got {} packs", '
-                      'hostname="{}", db="{}"'.format(len(self.__packs), self.__kb_hostname, db_name))
+            self.log.info('status=success, action=get_packs_list, msg="Got {} packs", '
+                          'hostname="{}", db="{}"'.format(len(self.__packs), self.__kb_hostname, db_name))
 
         return self.__packs
 
-    def __iterate_folders_tree(self, db_name: str):
+    def __iterate_folders_tree(self, db_name: str, folder_id: str):
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+
+        folder_url = self.__api_folders_children.format(folder_id)
+
+        url = "https://{}:{}{}".format(self.__kb_hostname, self.__kb_port, folder_url)
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='GET',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers)
+
+        folders_packs = r.json()
+        for i in folders_packs:
+            node_type = i.get("NodeKind")
+            current = None
+            if node_type == "Folder":
+                current = self.__folders
+            elif node_type == "KnowledgePack":
+                current = self.__packs
+            else:
+                continue
+
+            obj_id = i.get("Id")
+            obj_name = i.get("Name")
+            parent_obj_id = i.get("ParentId")
+            current[obj_id] = {"parent_id": parent_obj_id,
+                                    "name": obj_name}
+
+            if node_type == 'Folder' and i.get('HasChildren'):
+                self.__iterate_folders_tree(db_name, obj_id)
+
+
+    def __get_folder_pack_root_level(self, db_name: str):
+        # if expand_nodes is None:
+        #     expand_nodes = []
         params = {"expandNodes": []}
         headers = {'Content-Database': db_name,
                    'Content-Locale': 'RUS'}
@@ -409,8 +516,6 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                          headers=headers,
                          json=params)
         folders_packs = r.json()
-        self.__folders.clear()
-        self.__packs.clear()
 
         for i in folders_packs:
             node_type = i.get("NodeKind")
@@ -422,8 +527,15 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
             else:
                 continue
 
-            current[i.get("Id")] = {"parent_id": i.get("ParentId"),
-                                    "name": i.get("Name")}
+            obj_id = i.get("Id")
+            obj_name = i.get("Name")
+            parent_obj_id = i.get("ParentId")
+            current[obj_id] = {"parent_id": parent_obj_id,
+                                    "name": obj_name}
+
+            if node_type == 'Folder' and i.get('HasChildren'):
+                # Iterate nested
+                self.__iterate_folders_tree(db_name, obj_id)
 
     def get_normalizations_list(self, db_name: str, filters: Optional[dict] = None) -> Iterator[dict]:
         """
@@ -505,7 +617,7 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
 
         return self.get_all_objects(db_name, filters)
 
-    def get_all_objects(self, db_name: str, filters: Optional[dict] = None) -> Iterator[dict]:
+    def get_all_objects(self, db_name: str, filters: Optional[dict] = None, group_id: str = None) -> Iterator[dict]:
         """
         Выгрузка всех объектов, кроме макросов
 
@@ -522,6 +634,7 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                         "sort": [{"name": "objectId", "order": 0, "type": 1}],
                         "groupId": null,
                     }
+        :param group_id: Идентификатор набора установки
         :return: {"param1": "value1", "param2": "value2"}
         """
         self.log.info('status=prepare, action=get_all_objects, msg="Try to get objects list", '
@@ -535,6 +648,11 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         }
         if filters is not None:
             params.update(filters)
+
+        if group_id:
+            params.update(
+                {'groupId': group_id}
+            )
 
         # Пачками выгружаем содержимое
         is_end = False
@@ -813,8 +931,12 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                          json=params)
 
         if r.status_code == 201:
+            folder_id = r.json()
+            self.get_folders_list(db_name, do_refresh=True)
+            folder_path = self.get_folder_path_by_id(db_name, folder_id)
             self.log.info('status=success, action=create_folder, msg="created folder {} with id {}", '
-                          'hostname="{}", db="{}"'.format(name, r.json(), self.__kb_hostname, db_name))
+                          'hostname="{}", db="{}"'.format(folder_path, folder_id, self.__kb_hostname, db_name))
+
         else:
             self.log.error('status=failed, action=create_folder, msg="failed to create folder {}", '
                            'hostname="{}", db="{}"'.format(name, self.__kb_hostname, db_name))
@@ -829,6 +951,8 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :param folder_id: ID удаляемой папки
         :return: Объект Response
         """
+        folder_path = self.get_folder_path_by_id(db_name, folder_id)
+
         headers = {'Content-Database': db_name,
                    'Content-Locale': 'RUS'}
         url = "https://{hostname}:{port}{endpoint}/{folderId}".format(
@@ -845,11 +969,12 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                          headers=headers)
 
         if r.status_code == 204:
-            self.log.info('status=success, action=delete_folder, msg="deleted folder {}", '
-                          'hostname="{}", db="{}"'.format(folder_id, self.__kb_hostname, db_name))
+            self.log.info('status=success, action=delete_folder, msg="deleted folder {} with id {}", '
+                          'hostname="{}", db="{}"'.format(folder_path, folder_id, self.__kb_hostname, db_name))
+            self.get_folders_list(db_name, do_refresh=True)
         else:
-            self.log.error('status=failed, action=delete_folder, msg="failed to delete folder {}", '
-                           'hostname="{}", db="{}"'.format(folder_id, self.__kb_hostname, db_name))
+            self.log.error('status=failed, action=delete_folder, msg="failed to delete folder {} with id {}", '
+                           'hostname="{}", db="{}"'.format(folder_path, folder_id, self.__kb_hostname, db_name))
 
         return r
 
@@ -907,35 +1032,6 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
 
         return r.json()
 
-    def delete_co_rule(self, db_name: str, rule_id: str):
-        """
-        Удалить правило корреляции
-
-        :param db_name: Имя БД
-        :param rule_id: ID правила
-        :return: Объект Response
-        """
-        headers = {'Content-Database': db_name,
-                   'Content-Locale': 'RUS'}
-        url = "https://{hostname}:{port}{endpoint}/{ruleId}".format(hostname=self.__kb_hostname,
-                                                                    port=self.__kb_port,
-                                                                    endpoint=self.__api_co_rules,
-                                                                    ruleId=rule_id)
-
-        r = exec_request(self.__kb_session,
-                         url,
-                         method='DELETE',
-                         timeout=self.settings.connection_timeout,
-                         headers=headers)
-
-        if r.status_code == 204:
-            self.log.info('status=success, action=delete_co_rule, msg="deleted co rule {}", '
-                          'hostname="{}", db="{}"'.format(rule_id, self.__kb_hostname, db_name))
-        else:
-            self.log.error('status=failed, action=delete_co_rule, msg="failed to delete co rule {}", '
-                           'hostname="{}", db="{}"'.format(rule_id, self.__kb_hostname, db_name))
-
-        return r
 
     def create_group(self, db_name: str, name: str, parent_id: Optional[str] = None) -> str:
         """
@@ -968,8 +1064,12 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                          json=params)
 
         if r.status_code == 201:
+            group_id = r.json()
+            self.get_groups_list(db_name, do_refresh=True)
+            group_path = self.get_group_path_by_id(db_name, group_id)
             self.log.info('status=success, action=create_group, msg="created group {} with id {}", '
-                          'hostname="{}", db="{}"'.format(name, r.json(), self.__kb_hostname, db_name))
+                          'hostname="{}", db="{}"'.format(group_path, group_id, self.__kb_hostname, db_name))
+
         else:
             self.log.error('status=failed, action=create_group, msg="failed to create group {}", '
                            'hostname="{}", db="{}"'.format(name, self.__kb_hostname, db_name))
@@ -984,6 +1084,8 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :param group_id: ID удаляемого набора установки
         :return: Объект Response
         """
+        group_name = self.get_group_path_by_id(db_name, group_id)
+
         headers = {'Content-Database': db_name,
                    'Content-Locale': 'RUS'}
 
@@ -1002,11 +1104,12 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                          json=params)
 
         if r.status_code == 204:
-            self.log.info('status=success, action=delete_group, msg="deleted group {}", '
-                          'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
+            self.log.info('status=success, action=delete_group, msg="deleted group {} with id {}", '
+                          'hostname="{}", db="{}"'.format(group_name, group_id, self.__kb_hostname, db_name))
+            self.get_groups_list(db_name, do_refresh=True)
         else:
-            self.log.error('status=failed, action=delete_group, msg="failed to delete group {}", '
-                           'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
+            self.log.error('status=failed, action=delete_group, msg="failed to delete group {} with id", '
+                           'hostname="{}", db="{}"'.format(group_name, group_id, self.__kb_hostname, db_name))
 
         return r
 
@@ -1067,10 +1170,8 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :param folder_id: идентификатор набора установки
         :return: путь в дереве наборов установки вида root/child/grandchild
         """
-        if not self.__groups:
-            groups = self.get_groups_list(db_name)
-        else:
-            groups = self.__groups
+        groups = self.get_groups_list(db_name)
+
         parent = groups[folder_id]['parent_id']
         name = groups[folder_id]['name']
         ret_path = self.get_group_path_by_id(db_name, parent) if parent else ''
@@ -1121,9 +1222,8 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         return self.__get_group_children_tree(groups, group_id)
 
     def export_group(self, db_name: str, group_id: str, local_filepath: str,
-                     export_format: Optional[str] = EXPORT_FORMAT_KB,
-                     metadata_filepath: str = '',
-                     group_relative_root: str = '') -> int:
+                     export_format: Optional[str] = EXPORT_FORMAT_KB
+                     ) -> int:
         """
         Экспортировать набор установки
 
@@ -1131,11 +1231,10 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :param group_id: ID набора установки
         :param local_filepath: файл в который сохранить набор установки
         :param export_format: формат экспорта (KB / SIEM Lite)
-        :metadata_filepath: имя файла для сохранения метаданных (по умолчанию не сохраняются).
-                            В метаданных сохраняется путь для экспорта
-        :metadata_relative_root: путь, который считать корневым при экспорте дерева наборов установки
+
         :return: размер созданного файла
         """
+        group_path = self.get_group_path_by_id(db_name, group_id)
 
         headers = {'Content-Locale': 'RUS'}
 
@@ -1168,113 +1267,18 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                 with open(local_filepath, 'wb') as kbfile:
                     retval = kbfile.write(r.content)
 
-            self.log.info('status=success, action=export_group, msg="group {} exported", '
-                          'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
+                self.log.info('status=success, action=export_group, msg="group {} with id {} exported to {}", '
+                              'hostname="{}", db="{}"'.format(group_path, group_id, local_filepath, self.__kb_hostname, db_name))
+            else:
+                self.log.info('status=success, action=export_group, msg="group {} with id {} is empty", '
+                              'hostname="{}", db="{}"'.format(group_path, group_id, self.__kb_hostname, db_name))
 
-            if metadata_filepath:
-                # Формирование метаданных
 
-                absolute_path = self.get_group_path_by_id(db_name, group_id)
-                if absolute_path.startswith(group_relative_root):
-                    relative_path = os.path.relpath(absolute_path, group_relative_root).replace(os.sep, '/')
-                else:
-                    relative_path = absolute_path
-
-                metadata = {
-                    'group_path': relative_path,
-                }
-
-                # Добавить ссылки на контент в метаданные
-                if not is_group_empty:
-                    pack = ContentPack(local_filepath)
-                    metadata['kb_tree'] = pack.get_content_links()
-
-                with open(metadata_filepath, 'wt', encoding='utf-8') as meta_file:
-                    yaml.safe_dump(
-                        metadata,
-                        meta_file,
-                        allow_unicode = True
-                    )
         else:
             self.log.error('status=failed, action=export_group, msg="failed to export group {}", '
                            'hostname="{}", db="{}"'.format(group_id, self.__kb_hostname, db_name))
 
         return retval
-
-    def export_groups(self, db_name: str, group_paths: list, folder: str,
-                      recursive: bool = True,
-                      export_metadata: bool = True,
-                      group_relative_root: str = ''
-                      ):
-        """
-        Выгрузить наборы установки с метаданными
-
-        :param db_name: Имя БД
-        :param group_paths: Список путей в дереве наборов установки
-        :param folder: Каталог для выгрузки
-        :param recursive: Выгружать дочерние элементы дерева наборов установки
-        :param export_metadata: Выгружать метаданные по набору установки
-        :param group_relative_root: Узел в дереве наборов установки, который будет считаться корневым
-        :return:
-        """
-        SPECIAL_CHARS = ['<', '>', ':', '"', '*', '|', '?']
-
-        for group_path in group_paths:
-            group_id_current = self.get_group_id_by_path(db_name, group_path)
-            group_ids_total = [group_id_current, ]
-            if recursive:
-                group_ids_total.extend(self.get_nested_group_ids(db_name, group_id_current))
-
-            for group_id in group_ids_total:
-                group_path = self.get_group_path_by_id(db_name, group_id)
-
-                if group_path.startswith(group_relative_root):
-                    group_path = os.path.relpath(group_path, group_relative_root).replace(os.sep, '/')
-
-                filename = '_'.join(group_path.split('/'))
-                pack_filename = filename + '.kb'
-                for char in SPECIAL_CHARS:
-                    pack_filename = pack_filename.replace(char, '_')
-
-                if export_metadata:
-                    meta_filename = filename + '.yaml'
-                    for char in SPECIAL_CHARS:
-                        meta_filename= meta_filename.replace(char, '_')
-                    metadata_filepath = os.path.join(folder, meta_filename)
-                else:
-                    metadata_filepath = ''
-
-                self.export_group(db_name,
-                                  group_id,
-                                  os.path.join(folder, pack_filename),
-                                  metadata_filepath=metadata_filepath,
-                                  group_relative_root=group_relative_root
-                                  )
-
-
-    def export_groups_unpacked(self, db_name: str, group_paths: list, folder: str,
-                      recursive: bool = True,
-                      export_metadata: bool = True,
-                      group_relative_root: str = ''):
-        """
-        Экспорт наборов установки в структуру рабочей копии
-
-        :param db_name: имя БД
-        :param group_paths: пути для экспорта
-        :param folder: каталог рабочей копии
-        :param recursive: выгружать дерево наборов устновки
-        :param export_metadata: экспортировать метаданные по наборам установки
-        :param group_relative_root: относительный путь в дереве наборов установки
-        :return:
-        """
-
-        if not os.path.isdir(folder):
-            os.mkdir(folder)
-
-        with TemporaryDirectory() as tmp_dir:
-            self.export_groups(db_name, group_paths, tmp_dir, recursive, export_metadata, group_relative_root)
-            content_folder_to_work_copy(tmp_dir, folder)
-
 
 
     def import_group(self, db_name: str, filepath: str, mode: Optional[str] = IMPORT_ADD_AND_UPDATE) -> int:
@@ -1445,6 +1449,14 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
         :param group_ids: идентификаторы наборов устновки
         :return:
         """
+
+        # получить перечень обновляемых объектов
+        content_item_names = [obj['name'] for obj in self.get_all_objects(db_name) if obj['id'] in content_items_ids]
+
+        # получить имя набора установки с которым осуществляется связывание
+        group_names =[group_data.get('name', '') for group_id, group_data in self.get_groups_list(db_name).items() if group_id in group_ids]
+
+
         headers = {'Content-Database': db_name,
                    'Content-Locale': 'RUS'}
 
@@ -1478,12 +1490,12 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
 
         if r.status_code == 200:
             self.log.info('status=success, action=link_content_to_groups, msg="{} linked to {}", '
-                          'hostname="{}", db="{}"'.format(content_items_ids, group_ids, self.__kb_hostname, db_name))
+                          'hostname="{}", db="{}"'.format(str(content_item_names), str(group_names), self.__kb_hostname, db_name))
         else:
             self.log.error('status=failed, action=import_file, msg="can not link {} to {}", '
-                           'hostname="{}", db="{}"'.format(content_items_ids, group_ids, self.__kb_hostname, db_name))
+                           'hostname="{}", db="{}"'.format(str(content_item_names), str(group_names), self.__kb_hostname, db_name))
 
-    def __process_kb_metadata(self, db_name, obj_map, kb_meta):
+    def process_kb_metadata(self, db_name, obj_map, kb_meta):
         if 'group_path' in kb_meta and kb_meta['group_path']:
             # Создать путь в дереве наборов установки
             group_id = self.create_group_path(db_name, kb_meta['group_path'])
@@ -1507,58 +1519,295 @@ class KnowledgeBase(ModuleInterface, LoggingHandler):
                     # Связать контент с набором установки
                     self.link_content_to_groups(db_name, contend_guid_strs, [group_id, ])
 
-
-    def import_groups(self, db_name: str, folder: str,
-                                                create_groups: bool = True,
-                                                group_relative_root: str = ''):
-        """
-        Импорт всех наборов установки из каталога
-        Опиционально: восстановка дерева наборово установки
-
-        :param db_name: Имя БД
-        :param folder: Каталог с файлами для импорта
-                        *.kb - наборы установки
-                        *.yaml - метаданные по наборам установки
-        :param create_groups: Создавать иерархию наборов установки
-        :param group_relative_root: Набор установки под которым импортировать иерархию наборов установки
-        :return:
-        """
-
-        if os.path.exists(folder):
-            # Импортировать все наборы установки (*.kb)
-            for filename in os.listdir(folder):
-                if filename.endswith('.kb'):
-                    self.import_group(db_name, os.path.join(folder, filename))
-
-            # Создать иерархию наборов установки на основе метаданных (*.yaml)
-            if create_groups:
-                obj_map = {
-                            (item['object_kind'], '/'.join((item['folder_path'], item['name']))): item['id']
-                                                                            for item in self.get_all_objects(db_name)
-                }
-
-                for filename in os.listdir(folder):
-                    if filename.endswith('.yaml'):
-                        with open(os.path.join(folder, filename), 'rt', encoding='utf-8') as kb_meta_file:
-                            self.__process_kb_metadata(db_name, obj_map, yaml.full_load(kb_meta_file))
-
-    def import_groups_unpacked(self, db_name: str, folder: str,
-                                                create_groups: bool = True,
-                                                group_relative_root: str = ''):
-        """
-        Импорт групп из рабочей копии
+    def get_folder_path_by_id(self, db_name: str, folder_id: str) -> str:
+        '''
+        Получить путь в дереве папок по ID папки
 
         :param db_name: имя БД
-        :param folder: каталог с рабочей копией
-        :param create_groups: создавать наборы установки в SIEM
-        :param group_relative_root: относительный путь под которым создавать наборы установки
+        :param folder_id: ID папки
+        :return: путь в дереве папок
+        '''
+        folders = self.get_folders_list(db_name)
+        parent = folders[folder_id]['parent_id']
+        name = folders[folder_id]['name']
+        ret_path = self.get_folder_path_by_id(db_name, parent) if parent else ''
+        return '/'.join((ret_path, name)) if ret_path else name
+
+
+    def get_folder_id_by_path(self, db_name: str, path: str) -> str:
+        '''
+        Получить ID папки по пути в дереве папок
+
+        :param db_name: имя БД
+        :param path: путь в дереве папок
+        :return: ID папки
+        '''
+        folders = self.get_folders_list(db_name)
+        path_to_id_map = {self.get_folder_path_by_id(db_name, folder_id): folder_id for folder_id in folders}
+        return path_to_id_map.get(path)
+
+    def get_content_data_by_folder_id(self, db_name: str, folder_id) -> dict:
+        '''
+        Получить данные по контенту лежащему в папке с заданным ID
+
+        :param db_name: имя БД
+        :param folder_id: ID папки
+        :return: словарь вида {'ID объекта' : 'Тип объекта'}
+        '''
+        filters = {
+            "folderId": folder_id,
+            "filters": None,
+            "search": "",
+            "sort": [
+                {"name": "objectId","order": 0,"type": 0}
+            ],
+            "recursive": False,
+            "groupId": None,
+            "withoutGroups": False
+        }
+        content = list(self.get_all_objects(db_name, filters))
+        nested_data = {item['id']:item['object_kind'] for item in content if item['folder_id'] == folder_id}
+        return nested_data
+
+    def get_nested_folder_ids_by_folder_id(self, db_name: str, folder_id: str) -> list:
+        '''
+        Получить идентификаторы дочерних папок по ID папки
+
+        :param db_name: имя БД
+        :param folder_id: ID папки
+        :return: идентификаторы вложенных папок
+        '''
+        folders = self.get_folders_list(db_name)
+        return [fold_id for fold_id, fold_data in folders.items() if fold_data['parent_id'] == folder_id]
+
+
+    def move_folder(self, db_name: str, folder_id: str, dst_folder_id: str):
+        '''
+        Переместить папку под другого родителя
+
+        :param db_name:
+        :param folder_id:
+        :param dst_folder_id:
+        :return:
+        '''
+
+        folder_path = self.get_folder_path_by_id(db_name, folder_id)
+        dst_folder_path = self.get_folder_path_by_id(db_name, dst_folder_id)
+        folder_name = folder_path.split('/')[-1]
+
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+        url = "https://{hostname}:{port}{endpoint}/{folderId}".format(
+            hostname=self.__kb_hostname,
+            port=self.__kb_port,
+            endpoint=self.__api_folders,
+            folderId=folder_id
+        )
+
+        params = {
+            "id": folder_id,
+            "name": folder_name,
+            "parentId": dst_folder_id
+        }
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='PUT',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers,
+                         json=params)
+
+        if r.status_code == 200:
+            self.log.info('status=success, action=move_folder, msg="folder {} moved to {}", '
+                          'hostname="{}", db="{}"'.format(folder_path, dst_folder_path, self.__kb_hostname, db_name))
+            self.get_folders_list(db_name, do_refresh=True)
+        else:
+            self.log.error('status=failed, action=move_folder, msg="failed to move folder {} to {}", '
+                           'hostname="{}", db="{}"'.format(folder_path, dst_folder_path, self.__kb_hostname, db_name))
+
+        return r
+
+    def get_content_item(self, db_name: str, item_id: str, item_type: str) -> dict:
+        '''
+        Получить элемент контента по типу и ID
+
+        :param db_name: имя БД
+        :param item_id: ID элемента контента
+        :param item_type: тип (CorrelationRule/AggregationRule/EnrichmentRule/NormalizationRule/TabularList)
+        :return: dict с полями для элемента контента
+        '''
+
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+        url = "https://{hostname}:{port}{endpoint}/{item_type}/{item_id}".format(hostname=self.__kb_hostname,
+                                                                    port=self.__kb_port,
+                                                                    endpoint=self.__api_siem,
+                                                                    item_type=KnowledgeBase.ITEM_TYPE_MAP.get(item_type),
+                                                                    item_id=item_id)
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='GET',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers)
+
+        if r.status_code == 200:
+            self.log.info('status=success, action=get_content_item, msg="Get item type {} item id {}", '
+                          'hostname="{}", db="{}"'.format(item_type, item_id, self.__kb_hostname, db_name))
+        else:
+            self.log.error('status=failed, action=get_content_item, msg="Failed to get item type {} item id {}", '
+                           'hostname="{}", db="{}"'.format(item_type, item_id, self.__kb_hostname, db_name))
+
+        return r.json()
+
+
+    def move_content_item(self, db_name: str, item_id: str, item_type: str,  dst_folder_id: str):
+        '''
+        Переместить элемент контента в другую папку
+
+        :param db_name: имя БД
+        :param item_id: ID элемента контента
+        :param item_type: тип контента
+        :param dst_folder_id: (CorrelationRule/AggregationRule/EnrichmentRule/NormalizationRule/TabularList)
+        :return:
+        '''
+
+        dst_folder_path = self.get_folder_path_by_id(db_name, dst_folder_id)
+
+        item_data = self.get_content_item(db_name, item_id, item_type)
+        item_name = item_data.get('SystemName', 'Unknown')
+
+        put_content = {
+            'folderId': dst_folder_id,
+            'description': {'RUS': item_data.get('Description')} if item_data.get('Description') else {}
+        }
+
+        if item_type == 'TabularList':
+            put_content.update({
+            'userCanEditContent': item_data.get('UserCanEditContent'),
+            'fields': [{
+                "id": d['Id'],
+                "name": d['Name'],
+                "typeId": d['TypeId'],
+                "isPrimaryKey": d['IsPrimaryKey'],
+                "isIndex": d['IsIndex'],
+                "isNullable": d['IsNullable'],
+                "mapping": d['Mapping']
+            } for d in item_data.get('Fields')],
+            })
+        else:
+            put_content.update({
+                'systemName': item_data.get('SystemName'),
+                'formula': item_data.get('Formula'),
+            })
+
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+        url = "https://{hostname}:{port}{endpoint}/{item_type}/{item_id}".format(hostname=self.__kb_hostname,
+                                                                                 port=self.__kb_port,
+                                                                                 endpoint=self.__api_siem,
+                                                                                 item_type=KnowledgeBase.ITEM_TYPE_MAP.get(
+                                                                                     item_type),
+                                                                                 item_id=item_id)
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='PUT',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers,
+                         json=put_content)
+
+        if r.status_code == 200:
+            self.log.info('status=success, action=move_conten_item, msg={} {} moved to {}", '
+                          'hostname="{}", db="{}"'.format(item_type, item_name, dst_folder_path, self.__kb_hostname, db_name))
+        else:
+            self.log.error('status=failed, action=move_conten_item, msg="Failed to move {} {} to {}", '
+                           'hostname="{}", db="{}"'.format(item_type, item_name, dst_folder_path, self.__kb_hostname, db_name))
+
+
+    def delete_content_item(self, db_name: str, item_id: str, item_type: str):
+        """
+        Удаление элемента контента
+
+        :param db_name:  Имя БД
+        :param item_id: ID элемента контента
+        :param item_type: тип (CorrelationRule/AggregationRule/EnrichmentRule/NormalizationRule/TabularList)
         :return:
         """
-        if os.path.isdir(folder):
-            with TemporaryDirectory() as tmp_dir:
-                work_copy_to_content_folder(folder, tmp_dir)
-                print(os.listdir(tmp_dir))
-                self.import_groups(db_name, tmp_dir, create_groups, group_relative_root)
+
+        item_data = self.get_content_item(db_name, item_id, item_type)
+        item_name = item_data.get('SystemName', 'Unknown')
+
+        # Деинсталлировать установленный контент
+        if item_data.get('DeploymentStatus') == KnowledgeBase.DEPLOYMENT_STATUS_INSTALLED:
+            self.install_objects_sync(db_name, [item_id, ], do_remove=True)
+
+        headers = {'Content-Database': db_name,
+                   'Content-Locale': 'RUS'}
+        url = "https://{hostname}:{port}{endpoint}/{item_type}/{item_id}".format(hostname=self.__kb_hostname,
+                                                                    port=self.__kb_port,
+                                                                    endpoint=self.__api_siem,
+                                                                    item_type=KnowledgeBase.ITEM_TYPE_MAP.get(item_type),
+                                                                    item_id=item_id)
+
+        r = exec_request(self.__kb_session,
+                         url,
+                         method='DELETE',
+                         timeout=self.settings.connection_timeout,
+                         headers=headers)
+
+        if r.status_code == 204:
+            self.log.info('status=success, action=delete_content_item, msg="deleted {} {} with id {}", '
+                          'hostname="{}", db="{}"'.format(item_type, item_name, item_id, self.__kb_hostname, db_name))
+        else:
+            self.log.error('status=failed, action=delete_content_item, msg="failed to delete {} {} with id {}", '
+                           'hostname="{}", db="{}"'.format(item_type, item_name, item_id, self.__kb_hostname, db_name))
+
+        return r
+
+    def move_folder_content(self, db_name: str, src_folder_path: str, dst_folder_path: str):
+        '''
+        Переместить всю начинку папки (дочерние папки и контент) в другую папку
+
+        :param db_name: имя БД
+        :param src_folder_path: путь до исходной папки
+        :param dst_folder_path: путь до папки назанчения
+        :return:
+        '''
+        src_folder_id = self.get_folder_id_by_path(db_name, src_folder_path)
+        dst_folder_id = self.get_folder_id_by_path(db_name, dst_folder_path)
+
+        child_folders = self.get_nested_folder_ids_by_folder_id(db_name, src_folder_id)
+        child_content_items = self.get_content_data_by_folder_id(db_name, src_folder_id)
+
+        # Move folders
+        for child_folder_id in child_folders:
+            self.move_folder(db_name, child_folder_id, dst_folder_id)
+
+        # Move content items
+        for child_content_id, child_content_type in child_content_items.items():
+            self.move_content_item(db_name, child_content_id, child_content_type, dst_folder_id)
+
+    def get_content_items_by_group_id(self, db_name: str, group_id: str, recursive: bool = True) -> list:
+        """
+        Получить элементы контента по ID набора установки
+
+        :param db_name: Имя БД
+        :param group_id: ID набора установки
+        :param recursive: получить элементы контента из дочерних наборов установки
+        :return: элементы контента в виде списка dict
+        """
+        content_items = []
+        group_ids = [group_id, ]
+
+        if recursive:
+            group_ids.extend(self.get_nested_group_ids(db_name, group_id))
+
+        for gid in group_ids:
+            content_objects = self.get_all_objects(db_name, filters=None, group_id=gid)
+            content_items.extend(content_objects)
+
+        return content_items
 
 
     def close(self):

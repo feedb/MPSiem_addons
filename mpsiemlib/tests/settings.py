@@ -4,7 +4,7 @@ import logging
 from mpsiemlib.common import AuthType, Creds, Settings, setup_logging
 
 LOG_CONF = './conf/logging.yml'
-setup_logging(LOG_CONF, logging.DEBUG)
+setup_logging(LOG_CONF, logging.INFO)
 
 # Используется только в тестах MPAuth
 creds_local = Creds()

@@ -61,12 +61,12 @@ class KBTestCase(unittest.TestCase):
         self.assertTrue(len(ret) != 0)
 
     def test_get_folders_list(self):
-        db_name = self.__choose_any_db()
+        db_name = self.__choose_deployable_db()
         ret = self.__module.get_folders_list(db_name)
         self.assertTrue(len(ret) != 0)
 
     def test_get_packs_list(self):
-        db_name = self.__choose_any_db()
+        db_name = self.__choose_deployable_db()
         ret = self.__module.get_packs_list(db_name)
         self.assertTrue(ret is not None)
 
@@ -154,6 +154,7 @@ class KBTestCase(unittest.TestCase):
 
         self.assertTrue(ret is not None)
 
+    # @unittest.skip("Skip for development testing")
     def test_deploy(self):
         db_name = self.__choose_deployable_db()
 
@@ -172,7 +173,7 @@ class KBTestCase(unittest.TestCase):
                 success_install = True
                 break
 
-        deploy_id = self.__module.uninstall_object(db_name, [norm_rule.get('id')])
+        deploy_id = self.__module.uninstall_objects(db_name, [norm_rule.get('id')])
 
         success_uninstall = False
         for i in range(30):
@@ -183,6 +184,33 @@ class KBTestCase(unittest.TestCase):
                 break
 
         self.assertTrue(success_install and success_uninstall)
+
+
+    def test_install_sync(self):
+        db_name = self.__choose_deployable_db()
+
+        folder_name = gen_uppercase_string(12)  # случайное имя
+        new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
+
+        rule_name = gen_lowercase_string(20)  # случайное имя
+        code = self.__test_co_rule
+
+        group_name = gen_uppercase_string(12)  # случайное имя
+        new_group_id_str = self.__module.create_group(db_name, group_name)
+
+        groups = [new_group_id_str, ]
+
+        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str,
+                                                       group_ids=groups)
+
+
+        content_items = self.__module.get_content_items_by_group_id(db_name, new_group_id_str, False)
+        content_items_ids = [item['id'] for item in content_items]
+        self.__module.install_objects_sync(db_name, content_items_ids)
+
+        content_item = self.__module.get_content_items_by_group_id(db_name, new_group_id_str, False)[0]
+        self.assertEqual('installed', content_item.get('deployment_status', ''))
+
 
     @unittest.skip("Not Implemented")
     def test_deploy_group(self):
@@ -200,6 +228,7 @@ class KBTestCase(unittest.TestCase):
 
         self.assertTrue(False)
 
+    # @unittest.skip("Skip for development testing")
     def test_start_stop_rule(self):
         db_name = self.__choose_deployable_db()
         rule = next(self.__module.get_correlations_list(db_name, filters={"filters": {"DeploymentStatus": ["1"]}}))
@@ -284,7 +313,7 @@ class KBTestCase(unittest.TestCase):
 
         new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str)
 
-        retval = self.__module.delete_co_rule(db_name, new_rule_id_str)
+        retval = self.__module.delete_content_item(db_name, new_rule_id_str, 'CorrelationRule')
 
         self.assertEqual(204, retval.status_code)
 
@@ -365,48 +394,6 @@ class KBTestCase(unittest.TestCase):
                                                export_format=self.__module.EXPORT_FORMAT_SIEM_LITE)
             self.assertGreater(bytes, 0)
 
-    def test_export_groups(self):
-        db_name = self.__choose_deployable_db()
-
-        folder_name = gen_uppercase_string(12)  # случайное имя
-        new_folder_id_str = self.__module.create_folder(db_name, folder_name, None)
-
-        rule_name = gen_lowercase_string(20)  # случайное имя
-        code = self.__test_co_rule
-
-        root_group_name = gen_uppercase_string(12)  # случайное имя
-        root_group_id_str = self.__module.create_group(db_name, root_group_name)
-
-        child_group_name = gen_uppercase_string(12)  # случайное имя
-        child_group_id_str = self.__module.create_group(db_name, child_group_name, root_group_id_str)
-
-        groups = [child_group_id_str, ]
-
-        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', new_folder_id_str,
-                                                       group_ids=groups)
-
-        with TemporaryDirectory() as tmpdirname:
-            self.__module.export_groups(
-                db_name,
-                [root_group_name, ],
-                tmpdirname,
-                recursive=True,
-                export_metadata=True,
-                group_relative_root=''
-            )
-
-            print(tmpdirname)
-            print(os.listdir(tmpdirname))
-
-            print(os.path.join(tmpdirname, root_group_name + '.yaml'))
-            self.assertTrue(os.path.exists(os.path.join(tmpdirname, root_group_name + '.yaml')))
-
-            child_path = '_'.join((root_group_name, child_group_name))
-            print(os.path.join(tmpdirname, child_path + '.yaml'))
-            self.assertTrue(os.path.exists(os.path.join(tmpdirname, child_path + '.yaml')))
-            print(os.path.join(tmpdirname, child_path + '.kb'))
-            self.assertTrue(os.path.exists(os.path.join(tmpdirname, child_path + '.kb')))
-
     def test_create_group_path(self):
         db_name = self.__choose_deployable_db()
 
@@ -436,10 +423,9 @@ class KBTestCase(unittest.TestCase):
         child_group_id_str = self.__module.create_group(db_name, child_group_name, root_group_id_str)
 
         self.assertEqual(
-                            self.__module.get_group_path_by_id(db_name, child_group_id_str),
-                            '/'.join((root_group_name, child_group_name))
-                        )
-
+            self.__module.get_group_path_by_id(db_name, child_group_id_str),
+            '/'.join((root_group_name, child_group_name))
+        )
 
     def test_get_group_id_by_path(self):
         db_name = self.__choose_deployable_db()
@@ -475,7 +461,6 @@ class KBTestCase(unittest.TestCase):
         grandchild_group_name = gen_uppercase_string(12)
         grandchild_group_id_str = self.__module.create_group(db_name, grandchild_group_name, child_group_id_str)
 
-
         self.assertListEqual(self.__module.get_nested_group_ids(db_name, root_group_id_str),
                              [child_group_id_str, grandchild_group_id_str])
 
@@ -507,6 +492,146 @@ class KBTestCase(unittest.TestCase):
 
         self.assertCountEqual(group_ids, [child_group_id_str, second_group_id_str])
 
+    def test_get_folder_path_by_id(self):
+        db_name = self.__choose_deployable_db()
+        root_folder_name = gen_uppercase_string(12)  # случайное имя
+        parent_folder_id = self.__module.create_folder(db_name, root_folder_name, None)
+        nested_folder_name = gen_uppercase_string(12)  # случайное имя
+        nested_folder_id = self.__module.create_folder(db_name, nested_folder_name, parent_folder_id)
+        self.assertEqual('/'.join((root_folder_name, nested_folder_name)),
+                         self.__module.get_folder_path_by_id(db_name, nested_folder_id)
+                         )
+
+    def test_get_folder_id_by_path(self):
+        db_name = self.__choose_deployable_db()
+        root_folder_name = gen_uppercase_string(12)  # случайное имя
+        parent_folder_id = self.__module.create_folder(db_name, root_folder_name, None)
+        nested_folder_name = gen_uppercase_string(12)  # случайное имя
+        nested_folder_id = self.__module.create_folder(db_name, nested_folder_name, parent_folder_id)
+        self.assertEqual(nested_folder_id, self.__module.get_folder_id_by_path(db_name,
+                                                                               '/'.join((
+                                                                                   root_folder_name,
+                                                                                   nested_folder_name
+                                                                               ))))
+
+    def test_get_nested_folder_ids_by_folder_id(self):
+        db_name = self.__choose_deployable_db()
+
+        root_folder_name = gen_uppercase_string(12)  # случайное имя
+        parent_folder_id = self.__module.create_folder(db_name, root_folder_name, None)
+        nested_folder_name = gen_uppercase_string(12)  # случайное имя
+        nested_folder_id = self.__module.create_folder(db_name, nested_folder_name, parent_folder_id)
+        nested_folder_name2 = gen_uppercase_string(12)  # случайное имя
+        nested_folder_id2 = self.__module.create_folder(db_name, nested_folder_name2, parent_folder_id)
+
+        nested_ids = self.__module.get_nested_folder_ids_by_folder_id(db_name, parent_folder_id)
+        self.assertCountEqual([nested_folder_id, nested_folder_id2], nested_ids)
+
+    def test_get_content_data_by_folder_id(self):
+        db_name = self.__choose_deployable_db()
+
+        root_folder_name = gen_uppercase_string(12)  # случайное имя
+        parent_folder_id = self.__module.create_folder(db_name, root_folder_name, None)
+        nested_folder_name = gen_uppercase_string(12)  # случайное имя
+        nested_folder_id = self.__module.create_folder(db_name, nested_folder_name, parent_folder_id)
+
+        rule_name1 = gen_lowercase_string(20)  # случайное имя
+        code1 = self.__test_co_rule
+        rule_id_str1 = self.__module.create_co_rule(db_name, rule_name1, code1, 'Descr', parent_folder_id)
+
+        rule_name2 = gen_lowercase_string(20)  # случайное имя
+        code2 = self.__test_co_rule
+        rule_id_str2 = self.__module.create_co_rule(db_name, rule_name2, code2, 'Descr', nested_folder_id)
+
+        nested_ids = self.__module.get_content_data_by_folder_id(db_name, parent_folder_id)
+        self.assertDictEqual({rule_id_str1: "CorrelationRule"}, nested_ids)
+
+    def test_move_folder(self):
+        db_name = self.__choose_deployable_db()
+
+        src_folder_name = gen_uppercase_string(12)  # случайное имя
+        src_folder_id = self.__module.create_folder(db_name, src_folder_name, None)
+        nested_folder_name = gen_uppercase_string(12)  # случайное имя
+        nested_folder_id = self.__module.create_folder(db_name, nested_folder_name, src_folder_id)
+        dst_folder_name = gen_uppercase_string(12)  # случайное имя
+        dst_folder_id = self.__module.create_folder(db_name, dst_folder_name, None)
+
+        self.__module.move_folder(db_name, nested_folder_id, dst_folder_id)
+        self.__module.get_folders_list(db_name, do_refresh=True)
+        self.assertEqual('/'.join((dst_folder_name, nested_folder_name)),
+                         self.__module.get_folder_path_by_id(db_name, nested_folder_id))
+
+    def test_get_content_item(self):
+        db_name = self.__choose_deployable_db()
+        rule_name = gen_lowercase_string(20)  # случайное имя
+        code = self.__test_co_rule
+        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', None)
+        rule_data = self.__module.get_content_item(db_name, new_rule_id_str, "CorrelationRule")
+        self.assertEqual(code, rule_data.get('Formula'))
+
+    def test_move_co_rule(self):
+        db_name = self.__choose_deployable_db()
+
+        src_folder_name = gen_uppercase_string(12)  # случайное имя
+        src_folder_id = self.__module.create_folder(db_name, src_folder_name, None)
+
+        dst_folder_name = gen_uppercase_string(12)  # случайное имя
+        dst_folder_id = self.__module.create_folder(db_name, dst_folder_name, None)
+
+        rule_name = gen_lowercase_string(20)  # случайное имя
+        code = self.__test_co_rule
+        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', src_folder_id)
+
+        self.__module.move_content_item(db_name, new_rule_id_str, 'CorrelationRule', dst_folder_id)
+        rule_data = self.__module.get_content_item(db_name, new_rule_id_str, 'CorrelationRule')
+
+        self.assertEqual(dst_folder_id, rule_data.get('Folder').get('Id'))
+
+    def test_move_folder_content(self):
+        db_name = self.__choose_deployable_db()
+
+        src_folder_name = gen_uppercase_string(12)  # случайное имя
+        src_folder_id = self.__module.create_folder(db_name, src_folder_name, None)
+
+        dst_folder_name = gen_uppercase_string(12)  # случайное имя
+        dst_folder_id = self.__module.create_folder(db_name, dst_folder_name, None)
+
+        child_folder_name = gen_uppercase_string(12)  # случайное имя
+        child_folder_id = self.__module.create_folder(db_name, child_folder_name, src_folder_id)
+
+        rule_name = gen_lowercase_string(20)  # случайное имя
+        code = self.__test_co_rule
+        new_rule_id_str = self.__module.create_co_rule(db_name, rule_name, code, 'Descr', src_folder_id)
+
+        self.__module.move_folder_content(db_name, src_folder_name, dst_folder_name)
+        rule_data = self.__module.get_content_item(db_name, new_rule_id_str, 'CorrelationRule')
+
+        self.assertEqual(dst_folder_id, rule_data.get('Folder').get('Id'))
+        self.assertEqual('/'.join((dst_folder_name, child_folder_name)),
+                         self.__module.get_folder_path_by_id(db_name, child_folder_id))
+
+
+    def test_get_content_items_by_group_id(self):
+        db_name = self.__choose_deployable_db()
+
+        root_group_name = gen_uppercase_string(12)
+        child_group_name = gen_uppercase_string(12)
+        root_group_id = self.__module.create_group(db_name, root_group_name)
+        child_group_id = self.__module.create_group(db_name, child_group_name, root_group_id)
+
+        root_rule_name = gen_lowercase_string(20)  # случайное имя
+        code = self.__test_co_rule
+        root_rule_id_str = self.__module.create_co_rule(db_name, root_rule_name, code, 'Descr',
+                                                                        folder_id=None, group_ids=[root_group_id,])
+
+        child_rule_name = gen_lowercase_string(20)  # случайное имя
+        code = self.__test_co_rule
+        child_rule_id_str = self.__module.create_co_rule(db_name, child_rule_name, code, 'Descr',
+                                                        folder_id=None, group_ids=[child_group_id, ])
+
+        rule_data = self.__module.get_content_items_by_group_id(db_name, root_group_id, recursive=True)
+        rule_ids = [obj['id'] for obj in rule_data]
+        self.assertCountEqual([root_rule_id_str, child_rule_id_str], rule_ids)
 
 if __name__ == '__main__':
     unittest.main()

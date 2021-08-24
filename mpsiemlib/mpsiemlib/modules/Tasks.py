@@ -11,7 +11,9 @@ class Tasks(ModuleInterface, LoggingHandler):
 
     __api_agents_list = "/api/v1/scanner_agents"
     __api_modules_list = "/api/v1/scanner_modules"
-    __api_profiles_list = "/api/v2/scanner_profiles"
+    __api_profiles_list = ""
+    __api_profiles_list_old = "/api/v2/scanner_profiles"  # R23
+    __api_profiles_list_new = "/api/scanning/v3/scanner_profiles"  # R24
     __api_transports_list = "/api/v1/scanner_metatransports"
     __api_credentials_list = "/api/v3/credentials"
     __api_tasks_list = "/api/scanning/v3/scanner_tasks?additionalFilter=all&mainFilter=all"
@@ -26,12 +28,19 @@ class Tasks(ModuleInterface, LoggingHandler):
         LoggingHandler.__init__(self)
         self.__core_session = auth.connect(MPComponents.CORE)
         self.__core_hostname = auth.creds.core_hostname
+        self.__core_version = auth.get_core_version()
         self.__agents = {}
         self.__modules = {}
         self.__profiles = {}
         self.__transports = {}
         self.__credentials = {}
         self.__tasks = {}
+
+        if "23." in self.__core_version:
+            self.__api_profiles_list = self.__api_profiles_list_old
+        else:
+            self.__api_profiles_list = self.__api_profiles_list_new
+
         self.log.debug('status=success, action=prepare, msg="Tasks Module init"')
 
     def start_task(self, task_id):
@@ -152,9 +161,9 @@ class Tasks(ModuleInterface, LoggingHandler):
         response = r.json()
 
         for i in response:
-            # почему-то ID выглядит как "{2341234-1234-234-2388}"
+            # почему-то ID выглядит как "{2341234-1234-234-2388}" - исправлено в R24
             base_profile = i.get("baseProfileName")
-            profile_id = i.get("id", "").replace("{", "").replace("}", "")
+            profile_id = i.get("id", "").replace("{", "").replace("}", "")  # исправлено в R24
             self.__profiles[profile_id] = {"name": i.get("name"),
                                            "system": i.get("isSystem"),
                                            "base_profile": base_profile.replace("\"", "") if base_profile else None,
@@ -174,6 +183,10 @@ class Tasks(ModuleInterface, LoggingHandler):
 
         :return:
         """
+
+        if not "23." in self.__core_version:
+            raise NotImplementedError("Transports list API deprecated on {}".format(self.__core_version))
+
         if len(self.__transports) != 0 and not do_refresh:
             return self.__transports
 

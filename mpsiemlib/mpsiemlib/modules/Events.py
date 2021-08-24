@@ -1,3 +1,4 @@
+# Add some code
 import json
 import pytz
 from typing import Iterator
@@ -108,6 +109,9 @@ class Events(ModuleInterface, LoggingHandler):
                                                                                 end))
         line_counter = 0
         es_query = self.QueryBuilder.build_filter_query(filters, begin, end)
+        self.log.debug('status=prepare, action=build_query, msg="Generate ES query", '
+                       'hostname="{}" query="{}"'.format(self.__storage_hostname, es_query))
+
         indexes = ','.join(self.__get_indexes_list(begin, end))
         timeout_report_gen = self.settings.connection_timeout * self.settings.connection_timeout_x
 

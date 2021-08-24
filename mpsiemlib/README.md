@@ -23,7 +23,7 @@
 
 ## Сетевой доступ и права
 Для работы SDK необходимы следующие сетевые разрешения:
-- MP Core: tcp 443, tcp 3333, tcp 3334
+- MP Core: tcp 443, tcp 3334
 - PT KB: tcp 8091
 - Storage (Elastic): tcp 9200
 

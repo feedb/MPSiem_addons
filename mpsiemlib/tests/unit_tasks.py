@@ -34,6 +34,7 @@ class KBTestCase(unittest.TestCase):
         ret = self.__module.get_profiles_list()
         self.assertTrue(len(ret) != 0)
 
+    @unittest.skip("Deprecated after R23")
     def test_get_transports_list(self):
         ret = self.__module.get_transports_list()
         self.assertTrue(len(ret) != 0)
