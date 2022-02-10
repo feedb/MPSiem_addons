@@ -1,7 +1,0 @@
-{
-	"dashboard": "Scan enrichment",
-	"database1": "MP_Assets_Scans",
-	"query1": "select max(orderedid) from asset_scans ",
-	"database2": "MP_Assets_Scans",
-	"query2": "select count(*) from asset_raw_scans where orderedid>{val}"
-}
