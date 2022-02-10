@@ -1,38 +1,57 @@
 Мониторинг MaxPatrol SIEM
 Набор конфиг-файлов для telegraf агентов и готовые дашборды для Grafana.
 
-Пререквизиты:
-*  Установленный и настроенный сервер Grafana: https://grafana.com/grafana/download
-*  Установленная и настроенная база данных Influxdb: https://portal.influxdata.com/downloads
-*  [Создана база данных в inxlufb](https://docs.influxdata.com/influxdb/v1.7/introduction/getting-started/) Для примера, возьмем telegraf
-*  Создан datasource в Grafana: https://grafana.com/docs/features/datasources/influxdb/
-*  Для linux сервера: `apt-get install sysstat` и затем `service sysstat start`
+### Пререквизиты:
+*  Установленный и настроенный сервер [Grafana](https://grafana.com/grafana/download)
+*  Установленная и настроенная база данных [Influxdb](https://portal.influxdata.com/downloads)
+*  Создана база данных в [inxlufb](https://docs.influxdata.com/influxdb/v1.7/introduction/getting-started/) Для примера, возьмем "telegraf"
+*  В grafana cоздан [datasource](https://grafana.com/docs/features/datasources/influxdb/)
+*  Для debian сервера: `apt-get install sysstat` и затем `service sysstat start`
 
-Настройка конфигов telegraf агентов:
-1.  Берем нужный конфиг телеграф агента telegraf.conf (для Windows или для Linux) и редактируем его содержимое (только секцию OUTPUTS):
-    *  Меняем плейсхолдер {{influxdb_address}} на ip адрес или fqdn вашего influxdb сервера
-    *  Если имя вашей бд не telegraf, то меняем database = "your_database"
-    *  Если вы включили аутентификацию для БД, то меняем значения на ваши  `username = "influxdb_username" password = "influxdb_password"`
-
-
-Установка telegraf агента:
-1.  Качаем последнюю версию телеграф агента для вашей операционной системы: https://portal.influxdata.com/downloads/
+### DEBIAN Установка и настройка telegraf агента:
+1.  Качаем телеграф агента из [GitHub](https://github.com/influxdata/telegraf/releases)
+```    
+    рекомендован 1.18.2: wget https://dl.influxdata.com/telegraf/releases/telegraf_1.18.2-1_amd64.deb    
+```    
 2.  Устанавливаем сервис telegraf агента:
-    *  Для Windows:
-       1.   Распаковываем файлы агента в папку, например C:\telegraf
-       2.   Заменяем предварительно настроенный конфиг telegraf.conf из данного репозитория
-       3.   Выполняем установку и запуск сервиса:
-            *  `"C:\telegraf\telegraf.exe" --config "C:\telegraf\telegraf.conf" --service install --config-directory C:\telegraf\telegraf.d`
-            *  `sc config telegraf start= delayed-auto`
-            *  `sc start telegraf`
-       4.   Копируем папки: telegraf.d и scripts с файлами из проекта, в папку C:\telegraf
-    *   Для Linux:
-       1.   Команда для установки представлена по ссылке https://portal.influxdata.com/downloads/ в п.1
-       2.   Заменяем предварительно настроенный конфиг telegraf.conf из данного репозитория в /etc/telegraf
-       3.   Копируем файлы конфигурации из папки telegraf.d в /etc/telegraf/telegraf.d на агенте
-       3.   Перезапускаем сервис:
-            *  `service telegraf restart`
+```
+    dpkg -i telegraf_1.18.2-1_amd64.deb
+```    
+3.  В файле конфигурации устанавливаем пользователя root в параметр user (либо выдать расширенные права доступа для пользователя telegraf) 
+``` 
+    sed -r -i 's/User=.*$/User=root/g'  /lib/systemd/system/telegraf.service
+    systemctl daemon-reload
+    systemctl restart telegraf.service
+```    
+4.  В зависимости от установленных компонентов MPX (siem, storage, agent) скопироуйте соответсвующие config файлы из папки ./configs в /etc/telegraf/telegraf.d
+5.  Снять комментарий в файле /etc/telegraf/telegraf.conf с тегов соответствующих установленным компонентам
+6.  В файле /etc/telegraf/telegraf.conf установить параметры с адресом influxDB и именем базы данных
+```
+    urls = ["http://<INFLUX ADDRESS>:8086"]
+    database = "<DATABASE NAME>"
+```    
+7. Перезапустите сервис telegraf
+```
+   systemctl restart telegraf.service   
+```   
 
-Импортируем все дашборды из проекта в графану:
-При импорте дашборда выбираем ранее созданный datasource influxdb.
-* [Импорт дашборба в графану](https://grafana.com/docs/reference/export_import/#importing-a-dashboard)
+### WINDOWS Установка и настройка telegraf агента:
+1.  Скопировать содержимое .\agent-windows\telegraf в папку C:\telegraf 
+2.  Скачать исполняемый файл агента из [GitHub](https://github.com/influxdata/telegraf/releases) и поместить в папку C:\telegraf
+```    
+    рекомендован 1.18.2: https://dl.influxdata.com/telegraf/releases/telegraf-1.18.2_windows_amd64.zip   
+```    
+3.  В зависимости от установленных компонентов MPX (siem, storage, agent, core) скопироуйте соответсвующие config файлы из папки ./configs в C:\telegraf\telegraf.d
+4.  Снять комментарий в файле C:\telegraf\telegraf.conf с тегов соответствующих установленным компонентам
+5.  В файле C:\telegraf\telegraf.conf установить параметры с адресом influxDB и именем базы данных
+```
+    urls = ["http://<INFLUX ADDRESS>:8086"]
+    database = "<DATABASE NAME>"
+```    
+6. Запустите регистрацию telegraf как сервиса windows
+```
+   C:\telegraf\register_telegraf.cmd   
+```   
+
+### Импортируем все дашборды из проекта в графану:
+* [Импорт дашборда в графану](https://grafana.com/docs/reference/export_import/#importing-a-dashboard)
