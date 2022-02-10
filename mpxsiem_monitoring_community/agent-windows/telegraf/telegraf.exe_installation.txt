@@ -1,0 +1,17 @@
+1. Load telegraf agent archive from GtiHub porject https://github.com/influxdata/telegraf/releases
+use direct link  https://dl.influxdata.com/telegraf/releases/telegraf-<VERSION>_windows_amd64.zip
+for example: https://dl.influxdata.com/telegraf/releases/telegraf-1.20.0_windows_amd64.zip 
+
+2. Extract "telegraf.exe" from loaded archive to C:\telegraf
+
+3. Copy required config files for installed components from C:\telegraf\config to C:\telegraf\telegraf.d
+
+4. Uncomment tags for installed components in C:\telegraf\telegraf.conf
+
+5. Set "urls" and "database" param in /etc/telegraf/telegraf.conf for you influx database
+  urls = ["http://<INFLUX ADDRESS>:8086"]
+  database = "<DATABASE NAME>"
+
+6. Check and correct common script variables in config  ".\scripts\scripts.conf"
+
+7. Run "register_telegraf.cmd" for agent registration

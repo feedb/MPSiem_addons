@@ -1,0 +1,7 @@
+{
+	"dashboard": "Assets identification",
+	"database1": "MP_Assets_Identification",
+	"query1": "select Value FROM \"checkpoints\" WHERE Id = \'ScansPackagePoller\'",
+	"database2": "MP_Assets_Scans",
+	"query2": "select count(*) from asset_scans where orderedid>{query1}"
+}
