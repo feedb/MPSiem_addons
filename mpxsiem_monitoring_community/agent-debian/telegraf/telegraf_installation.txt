@@ -1,0 +1,25 @@
+1. Load and install telegraf agent service from GtiHub porject https://github.com/influxdata/telegraf/releases
+recommended 1.18.2 release: 
+wget https://dl.influxdata.com/telegraf/releases/telegraf_1.18.2-1_amd64.deb
+dpkg -i telegraf_1.18.2-1_amd64.deb
+
+2. Set "root" value to "user" param in telegraf service config (or set privileges for "telegraf" user)
+sed -r -i 's/User=.*$/User=root/g'  /lib/systemd/system/telegraf.service
+systemctl daemon-reload
+systemctl restart telegraf.service
+
+3. Set all scripts executable
+chmod +x ./scripts/*.py
+
+4. Copy required config files for installed components from ./config to /etc/telegraf/telegraf.d
+
+5. Uncomment tags for installed components in /etc/telegraf/telegraf.conf
+
+6. Set "urls" and "database" param in /etc/telegraf/telegraf.conf for you influx database
+  urls = ["http://<INFLUX ADDRESS>:8086"]
+  database = "<DATABASE NAME>"
+  
+7. Check and correct common script variables in config  ".\scripts\scripts.conf"  
+
+8. Restart telegraf service
+systemctl restart telegraf.service
