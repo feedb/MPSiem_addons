@@ -120,8 +120,8 @@ if __name__ == "__main__":
     session = authenticate(settings['core_url'], settings['core_user'], settings['core_pass'])[0]
     sent_list = read_incident_file(settings['logfile'])
     unix_time = int(time.time()) - settings['time_from']
-    post_params = r'{"offset":0,"limit":50,"groups":{"filterType":"no_filter"},"timeFrom":' + str(unix_time) + \
-                  r',"timeTo":null,"filterTimeType":"creation","filter":{"select":["key","name","category",' + \
+    post_params = r'{"offset":0,"limit":50,"groups":{"filterType":"no_filter"},"event_time_start":' + str(unix_time) + \
+                  r',"event_time_end":null,"filterTimeType":"creation","filter":{"select":["key","name","category",' + \
                   r'"type","status","created","assigned"], "where":"","orderby":[{"field":"created",' + \
                   r'"sortOrder":"descending"}, {"field":"status","sortOrder":"ascending"},' + \
                   r'{"field":"severity","sortOrder":"descending"}]},"queryIds":["all_incidents"]}'
