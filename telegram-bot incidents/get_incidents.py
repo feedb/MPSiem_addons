@@ -5,6 +5,7 @@ import time
 import os.path
 import requests
 import sys
+import datetime
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -119,8 +120,16 @@ if __name__ == "__main__":
     
     session = authenticate(settings['core_url'], settings['core_user'], settings['core_pass'])[0]
     sent_list = read_incident_file(settings['logfile'])
-    unix_time = int(time.time()) - settings['time_from']
-    post_params = r'{"offset":0,"limit":50,"groups":{"filterType":"no_filter"},"timeFrom":' + str(unix_time) + \
+
+    #old API
+    #unix_time = int(time.time()) - settings['time_from']
+    #timeFrom = str(unixtime)
+
+    #New API
+    timeFrom = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=settings['time_from'])
+    timeFrom = timeFrom.strftime('"%Y-%m-%dT%H:%M:%S.%fZ"')
+    
+    post_params = r'{"offset":0,"limit":50,"groups":{"filterType":"no_filter"},"timeFrom":' + timeFrom + \
                   r',"timeTo":null,"filterTimeType":"creation","filter":{"select":["key","name","category",' + \
                   r'"type","status","created","assigned"], "where":"","orderby":[{"field":"created",' + \
                   r'"sortOrder":"descending"}, {"field":"status","sortOrder":"ascending"},' + \
