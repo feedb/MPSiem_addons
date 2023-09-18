@@ -5,7 +5,7 @@ import time
 import os.path
 import requests
 import sys
-import datetime
+from datetime import datetime,timedelta
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -33,32 +33,12 @@ def authenticate(address, login, password, new_password=None, auth_type=0):
     if '"requiredPasswordChange":true' in response.text:
         raise AccessDenied(response.text)
 
-    return session, available_applications(session, address)
-
-def available_applications(session, address):
-    applications = print_response(session.get(
-        address + ':3334/ptms/api/sso/v1/applications'
-    )).json()
-
-    return [
-        app['id']
-        for app in applications
-        if is_application_available(session, app)
-    ]
-
-def is_application_available(session, app):
-    if app['id'] == 'idmgr':
-        modules = print_response(session.get(
-            app['url'] + '/ptms/api/sso/v1/account/modules'
-        )).json()
-
-        return bool(modules)
-
-    if app['id'] == 'mpx':
-        return external_auth(
+    response = external_auth(
             session,
-            app['url'] + '/account/login?returnUrl=/#/authorization/landing'
+            address + '/account/login?returnUrl=/#/authorization/landing'
         )
+    return session, response
+
         
 def external_auth(session, address):
 
@@ -107,6 +87,8 @@ def send_telegram_message(inc, settings):
     msg += "[" + inc["key"] +"](" + url + ")  [" + inc['name'] + "]"
     #https:// text part didn't work for me when passing in HTML parse_mode
     requests.post("https://api.telegram.org/bot" + settings['token'] + "/sendMessage", data = {'chat_id': settings['chat_id'], 'text':msg, 'parse_mode': 'Markdown'})
+    #print("URL: {0}, DATA; {1}".format("https://api.telegram.org/bot" + settings['token'] + "/sendMessage", {'chat_id': settings['chat_id'], 'text':msg, 'parse_mode': 'Markdown'}))
+
   
 if __name__ == "__main__":
     settings = {}
@@ -120,22 +102,16 @@ if __name__ == "__main__":
     
     session = authenticate(settings['core_url'], settings['core_user'], settings['core_pass'])[0]
     sent_list = read_incident_file(settings['logfile'])
+    timeFrom = datetime.utcnow() - timedelta(seconds = settings['time_from'])
 
-    #old API
-    #unix_time = int(time.time()) - settings['time_from']
-    #timeFrom = str(unixtime)
-
-    #New API
-    timeFrom = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=settings['time_from'])
-    timeFrom = timeFrom.strftime('"%Y-%m-%dT%H:%M:%S.%fZ"')
-    
-    post_params = r'{"offset":0,"limit":50,"groups":{"filterType":"no_filter"},"timeFrom":' + timeFrom + \
+    post_params = r'{"offset":0,"limit":50,"groups":{"filterType":"no_filter"},"timeFrom":' + \
+                  r'"' + timeFrom.strftime('%Y-%m-%d %H:%M:%SZ') + r'"'+ \
                   r',"timeTo":null,"filterTimeType":"creation","filter":{"select":["key","name","category",' + \
                   r'"type","status","created","assigned"], "where":"","orderby":[{"field":"created",' + \
                   r'"sortOrder":"descending"}, {"field":"status","sortOrder":"ascending"},' + \
                   r'{"field":"severity","sortOrder":"descending"}]},"queryIds":["all_incidents"]}'
     res = session.post(settings['core_url'] + '/api/v2/incidents/', json=json.loads(post_params)).text
-    
+
     recv_list = []
     for inc in (reversed(json.loads(res)["incidents"])):
         if not sent_list or (int(sent_list[-1]) < int(inc["key"].split('-')[-1])):
